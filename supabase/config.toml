@@ -1,0 +1,56 @@
+project_id = "mfkmtmduspgckogfxggx"
+
+[auth]
+site_url = "https://kuralab.com.br"
+additional_redirect_urls = ["http://localhost:8080", "http://localhost:5173", "https://kuralab.com.br/auth/v1/callback"]
+
+[auth.external.google]
+enabled = true
+client_id = "env(GOOGLE_AUTH_CLIENT_ID)"
+secret = "env(GOOGLE_AUTH_SECRET)"
+
+[functions.complete-signup]
+verify_jwt = false
+
+[functions.reset-password]
+verify_jwt = false
+
+[functions.save-user-profile]
+verify_jwt = false
+
+[functions.send-verification-code]
+verify_jwt = false
+
+[functions.verify-code]
+verify_jwt = false
+
+[functions.moderate-image]
+verify_jwt = false
+
+[functions.moderate-text]
+verify_jwt = false
+
+[functions.send-push-notification]
+verify_jwt = false
+
+[functions.get-vapid-key]
+verify_jwt = false
+
+[functions.create-boost-payment]
+verify_jwt = false
+
+
+[functions.create-boost-payment-card]
+verify_jwt = false
+
+[functions.pagarme-webhook]
+verify_jwt = false
+
+[functions.create-plan-payment]
+verify_jwt = false
+
+[functions.create-plan-payment-card]
+verify_jwt = false
+
+[functions.google-oauth-exchange]
+verify_jwt = false
