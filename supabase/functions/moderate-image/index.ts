@@ -1,9 +1,30 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Redis } from "https://esm.sh/@upstash/redis@1.28.0";
+import { Ratelimit } from "https://esm.sh/@upstash/ratelimit@1.0.1";
+import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// Rate limiting: 20 requests per minute per user
+function createRateLimiter() {
+  const redisUrl = Deno.env.get("UPSTASH_REDIS_URL");
+  const redisToken = Deno.env.get("UPSTASH_REDIS_TOKEN");
+
+  if (!redisUrl || !redisToken) {
+    console.warn("[moderate-image] Rate limiting not configured - UPSTASH credentials missing");
+    return null;
+  }
+
+  const redis = new Redis({
+    url: redisUrl,
+    token: redisToken,
+  });
+
+  return new Ratelimit({
+    redis,
+    limiter: Ratelimit.slidingWindow(20, "1 m"),
+    prefix: "ratelimit:moderate-image",
+  });
+}
 
 interface ModerationResult {
   imageApproved: boolean;
@@ -127,11 +148,58 @@ Set "flagged" to true if ANY category is true. Be strict - only allow clear, rea
 
 serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflightResponse = handleCorsPreflightRequest(req);
+  if (preflightResponse) return preflightResponse;
+
+  const origin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
 
   try {
+    // JWT Authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Rate limiting per user
+    const ratelimit = createRateLimiter();
+    if (ratelimit) {
+      try {
+        const { success, remaining } = await ratelimit.limit(user.id);
+        if (!success) {
+          console.log("[moderate-image] Rate limit exceeded for user:", user.id);
+          return new Response(
+            JSON.stringify({ error: "Muitas requisições. Aguarde antes de tentar novamente." }),
+            {
+              status: 429,
+              headers: {
+                "Content-Type": "application/json",
+                "X-RateLimit-Remaining": remaining.toString(),
+                ...corsHeaders,
+              },
+            }
+          );
+        }
+      } catch (rateLimitError) {
+        console.error("[moderate-image] Rate limit check failed:", rateLimitError);
+      }
+    }
+
     const { imageUrl } = await req.json();
 
     if (!imageUrl || typeof imageUrl !== 'string') {
