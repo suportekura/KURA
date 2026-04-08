@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
-import { MapPin, Star } from 'lucide-react';
+import { MapPin, Star, Heart } from 'lucide-react';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Product, ProductGender } from '@/types';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ReputationBadge } from '@/components/reputation';
 import { VerificationBadge, type VerificationLevel } from '@/components/reputation';
 import { gridItem, cardInteraction } from '@/lib/animations';
+import { useFavorites } from '@/hooks/useFavorites';
+import { useAuth } from '@/hooks/useAuth';
 
 interface ProductCardProps {
   product: Product & { gender?: ProductGender; status?: string; isBoosted?: boolean };
@@ -28,8 +30,22 @@ const genderLabels: Record<ProductGender, string> = {
 
 export function ProductCard({ product, index = 0 }: ProductCardProps) {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { favoriteProductIds, toggleFavorite } = useFavorites();
+  const isFav = favoriteProductIds.has(product.id);
 
-  const discount = product.originalPrice 
+  const handleFavorite = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    toggleFavorite(product.id);
+  };
+
+  const discount = product.originalPrice
     ? Math.round((1 - product.price / product.originalPrice) * 100)
     : 0;
 
@@ -69,17 +85,24 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
               </Badge>
             )}
 
-            <div className="absolute top-2 right-2 flex gap-1">
+            <div className="absolute top-2 right-2 flex flex-col items-end gap-1 z-10">
+              <button
+                onClick={handleFavorite}
+                className="w-7 h-7 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center shadow-sm"
+                aria-label={isFav ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+              >
+                <Heart className={cn('w-3.5 h-3.5 transition-colors', isFav ? 'fill-destructive text-destructive' : 'text-foreground/70')} />
+              </button>
               {product.gender && product.gender !== 'U' && (
-                <Badge 
-                  variant="secondary" 
+                <Badge
+                  variant="secondary"
                   className="bg-background/90 backdrop-blur-sm text-foreground border-0 text-[10px] px-1.5 py-0.5"
                 >
                   {genderLabels[product.gender]}
                 </Badge>
               )}
-              <Badge 
-                variant="secondary" 
+              <Badge
+                variant="secondary"
                 className="bg-background/90 backdrop-blur-sm text-foreground border-0 text-[10px] px-1.5 py-0.5"
               >
                 {conditionLabels[product.condition]}

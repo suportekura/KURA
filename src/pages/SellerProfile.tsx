@@ -473,13 +473,13 @@ export default function SellerProfile() {
         {activeTab === 'products' && (
           <>
             {productsLoading ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3 lg:gap-3">
                 {[...Array(6)].map((_, i) => (
                   <Skeleton key={i} className="aspect-square rounded-xl" />
                 ))}
               </div>
             ) : products.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3 lg:gap-3">
                 {products.map((product, index) => (
                   <ProductCard
                     key={product.id}
