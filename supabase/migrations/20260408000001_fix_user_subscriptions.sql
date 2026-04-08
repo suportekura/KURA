@@ -26,9 +26,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
--- 3. Add RLS UPDATE policy so users can manage their own subscription
---    (downgrades to 'free' from the client; upgrades go through Edge Functions)
-CREATE POLICY "Users can update own subscription"
+-- 3. Add RLS UPDATE policy so users can ONLY downgrade to 'free' from the client.
+--    Upgrades (plus/loja) must go through Edge Functions with service_role key.
+--    This prevents users from self-upgrading by writing directly to the table.
+CREATE POLICY "Users can downgrade own subscription to free"
 ON public.user_subscriptions FOR UPDATE TO authenticated
 USING (auth.uid() = user_id)
-WITH CHECK (auth.uid() = user_id);
+WITH CHECK (auth.uid() = user_id AND plan_type = 'free');

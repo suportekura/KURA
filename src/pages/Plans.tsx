@@ -167,7 +167,7 @@ export default function Plans() {
       if (planId === 'free') {
         const { error } = await supabase
           .from('user_subscriptions')
-          .update({ plan_type: 'free', expires_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+          .update({ plan_type: 'free', expires_at: null, updated_at: new Date().toISOString() })
           .eq('user_id', user.id);
         if (error) throw error;
         setCurrentPlan('free');
