@@ -39,8 +39,8 @@ export function Header() {
           <div className="flex items-center gap-3">
             <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label="Voltar ao início">
               <span className="relative w-12 h-12 block">
-                <img src={kuraKLight} alt="Kura" className="w-12 h-12 object-contain absolute inset-0 block dark:hidden transition-opacity duration-200" loading="eager" decoding="sync" fetchPriority="high" />
-                <img src={kuraKDark} alt="" className="w-12 h-12 object-contain absolute inset-0 hidden dark:block transition-opacity duration-200" loading="eager" decoding="sync" />
+                <img src={kuraKDark} alt="Kura" className="w-12 h-12 object-contain absolute inset-0 block dark:hidden transition-opacity duration-200" loading="eager" decoding="sync" fetchPriority="high" />
+                <img src={kuraKLight} alt="" className="w-12 h-12 object-contain absolute inset-0 hidden dark:block transition-opacity duration-200" loading="eager" decoding="sync" />
               </span>
             </button>
             <motion.button
