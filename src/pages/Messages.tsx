@@ -6,7 +6,6 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
 import { Loader2, MessageCircle, User } from 'lucide-react';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { fadeUpVariants, staggerContainer, staggerItem, DURATION, EASE } from '@/lib/animations';
@@ -155,7 +154,7 @@ export default function Messages() {
         initial="hidden"
         animate="visible"
         variants={staggerContainer}
-        className="px-4 py-6 space-y-6"
+        className="px-4 py-4 space-y-6"
       >
         {/* Header */}
         <motion.div variants={fadeUpVariants} transition={{ duration: DURATION.fast, ease: EASE.out }} className="space-y-1">
@@ -237,17 +236,17 @@ export default function Messages() {
             ))}
           </div>
         ) : (
-          <Card className="p-8 text-center">
-            <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
-              <MessageCircle className="w-8 h-8 text-muted-foreground" />
+          <div className="card-premium p-8 text-center space-y-3">
+            <div className="w-14 h-14 rounded-full bg-muted/50 flex items-center justify-center mx-auto">
+              <MessageCircle className="w-7 h-7 text-muted-foreground/40" />
             </div>
-            <h3 className="font-display text-xl font-semibold text-foreground mb-2">
-              Nenhuma conversa ainda
-            </h3>
-            <p className="text-muted-foreground text-sm">
-              Quando você iniciar uma conversa com um vendedor ou comprador, ela aparecerá aqui
-            </p>
-          </Card>
+            <div>
+              <p className="font-medium text-foreground">Nenhuma conversa ainda</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Quando você iniciar uma conversa com um vendedor ou comprador, ela aparecerá aqui
+              </p>
+            </div>
+          </div>
         )}
       </motion.div>
     </AppLayout>

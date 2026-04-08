@@ -25,7 +25,7 @@ export function SellerCard({
   const initials = displayName?.slice(0, 2).toUpperCase() || 'US';
 
   return (
-    <div className="bg-card border border-border rounded-xl p-4">
+    <div className="card-premium p-4">
       <div className="flex items-center gap-3">
         <Avatar className="h-12 w-12 border-2 border-primary/20">
           <AvatarImage src={avatarUrl || undefined} alt={displayName || 'Vendedor'} />

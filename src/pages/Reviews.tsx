@@ -174,13 +174,15 @@ export default function Reviews() {
         </header>
 
         <div className="px-4 py-6">
-          <Card className="p-8 text-center">
-            <Star className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="font-medium text-lg mb-2">Nenhuma avaliação ainda</h3>
-            <p className="text-muted-foreground text-sm">
-              Suas avaliações como comprador e vendedor aparecerão aqui.
-            </p>
-          </Card>
+          <div className="card-premium p-8 text-center space-y-3">
+            <Star className="w-12 h-12 mx-auto text-muted-foreground/40" />
+            <div>
+              <p className="font-medium text-foreground">Nenhuma avaliação ainda</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Suas avaliações como comprador e vendedor aparecerão aqui.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     );
