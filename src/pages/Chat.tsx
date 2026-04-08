@@ -620,7 +620,7 @@ export default function Chat() {
 
       {/* Order Summary Card */}
       {orderSummary && (
-        <div className="mx-4 mt-4 p-4 rounded-xl bg-card border border-border/50 shadow-sm">
+        <div className="mx-4 mt-4 card-premium p-4">
           <div className="flex items-center gap-2 mb-3">
             <Package className="w-4 h-4 text-primary" />
             <span className="text-sm font-medium">Resumo do Pedido</span>

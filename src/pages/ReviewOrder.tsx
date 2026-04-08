@@ -4,7 +4,6 @@ import { ArrowLeft, Star, Loader2, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Card } from '@/components/ui/card';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -199,7 +198,7 @@ export default function ReviewOrder() {
 
       <div className="px-4 py-6 space-y-6">
         {/* Product Preview */}
-        <Card className="p-4">
+        <div className="card-premium p-4">
           <div className="flex items-center gap-4">
             {order.product_image && (
               <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted">
@@ -217,7 +216,7 @@ export default function ReviewOrder() {
               </p>
             </div>
           </div>
-        </Card>
+        </div>
 
         {/* Rating */}
         <div className="space-y-3 text-center">

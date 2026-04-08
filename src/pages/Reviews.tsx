@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Star, ArrowLeft, User, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -239,7 +238,7 @@ export default function Reviews() {
 
           <TabsContent value="received" className="mt-4 space-y-3">
             {receivedReviews.map((review) => (
-              <Card key={review.id} className="p-4">
+              <div key={review.id} className="card-premium p-4">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
                     <User className="w-5 h-5 text-muted-foreground" />
@@ -264,13 +263,13 @@ export default function Reviews() {
                     </Badge>
                   </div>
                 </div>
-              </Card>
+              </div>
             ))}
           </TabsContent>
 
           <TabsContent value="given" className="mt-4 space-y-3">
             {givenReviews.map((review) => (
-              <Card key={review.id} className="p-4">
+              <div key={review.id} className="card-premium p-4">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
                     <User className="w-5 h-5 text-muted-foreground" />
@@ -292,7 +291,7 @@ export default function Reviews() {
                     )}
                   </div>
                 </div>
-              </Card>
+              </div>
             ))}
           </TabsContent>
         </Tabs>
