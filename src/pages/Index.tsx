@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ProductWithDistance } from '@/hooks/useProducts';
 import { cn } from '@/lib/utils';
 import { fadeUpVariants, DURATION, EASE } from '@/lib/animations';
+import { SearchX, AlertCircle } from 'lucide-react';
 
 const Index = () => {
   const [selectedCategory, setSelectedCategory] = useState<ProductCategory | undefined>();
@@ -166,12 +167,20 @@ const Index = () => {
                 ))}
               </div>
             ) : error ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">Erro ao carregar produtos</p>
+              <div className="card-premium p-8 text-center space-y-3">
+                <AlertCircle className="w-12 h-12 text-muted-foreground/40 mx-auto" />
+                <div>
+                  <p className="font-medium text-foreground">Erro ao carregar produtos</p>
+                  <p className="text-sm text-muted-foreground mt-1">Tente novamente em instantes</p>
+                </div>
               </div>
             ) : displayProducts.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">Nenhum produto encontrado</p>
+              <div className="card-premium p-8 text-center space-y-3">
+                <SearchX className="w-12 h-12 text-muted-foreground/40 mx-auto" />
+                <div>
+                  <p className="font-medium text-foreground">Nenhum produto encontrado</p>
+                  <p className="text-sm text-muted-foreground mt-1">Tente outros filtros ou categorias</p>
+                </div>
               </div>
             ) : (
               <ProductGrid 

@@ -456,7 +456,7 @@ export default function Profile() {
           {/* Group 1 — Plano & benefícios */}
           <motion.div variants={staggerItem}>
             <SectionLabel>Plano & benefícios</SectionLabel>
-            <div className="card-premium overflow-hidden rounded-xl">
+            <div className="card-premium overflow-hidden">
               <MenuRow
                 icon={Crown}
                 label="Planos"
@@ -500,7 +500,7 @@ export default function Profile() {
           {/* Group 2 — Minha loja */}
           <motion.div variants={staggerItem}>
             <SectionLabel>Minha loja</SectionLabel>
-            <div className="card-premium overflow-hidden rounded-xl">
+            <div className="card-premium overflow-hidden">
               <MenuRow
                 icon={Store}
                 label="Perfil público"
@@ -537,7 +537,7 @@ export default function Profile() {
           {/* Group 3 — Atividades */}
           <motion.div variants={staggerItem}>
             <SectionLabel>Atividades</SectionLabel>
-            <div className="card-premium overflow-hidden rounded-xl">
+            <div className="card-premium overflow-hidden">
               <MenuRow
                 icon={Store}
                 label="Minhas vendas"
@@ -575,7 +575,7 @@ export default function Profile() {
           {/* Group 4 — Preferências */}
           <motion.div variants={staggerItem}>
             <SectionLabel>Preferências</SectionLabel>
-            <div className="card-premium overflow-hidden rounded-xl">
+            <div className="card-premium overflow-hidden">
               <div className="flex items-center gap-3 px-4 py-3 border-b border-border/40">
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-muted">
                   {theme === 'dark' ? (

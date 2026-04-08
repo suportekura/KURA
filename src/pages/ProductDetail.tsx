@@ -420,7 +420,7 @@ export default function ProductDetail() {
                   Você tem {minutesRemaining ?? 0} min para finalizar a compra.
                 </p>
                 <Button
-                  className="w-full btn-primary h-11 rounded-xl"
+                  className="w-full btn-primary h-12"
                   onClick={handleBuyNow}
                 >
                   <CreditCard className="w-5 h-5 mr-2" />

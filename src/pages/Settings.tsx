@@ -228,14 +228,21 @@ export default function Settings() {
 
         {/* Delete Account */}
         <motion.div variants={staggerItem}>
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
             onClick={() => navigate('/settings/delete-account')}
           >
             <Trash2 className="w-5 h-5 mr-3" />
             Excluir conta
           </Button>
+        </motion.div>
+
+        {/* App Version */}
+        <motion.div variants={staggerItem} className="pb-2">
+          <p className="text-center text-xs text-muted-foreground/50 select-none">
+            Kura v{__APP_VERSION__}
+          </p>
         </motion.div>
       </motion.div>
     </div>

@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Star, ArrowLeft, User, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -174,13 +173,15 @@ export default function Reviews() {
         </header>
 
         <div className="px-4 py-6">
-          <Card className="p-8 text-center">
-            <Star className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="font-medium text-lg mb-2">Nenhuma avaliação ainda</h3>
-            <p className="text-muted-foreground text-sm">
-              Suas avaliações como comprador e vendedor aparecerão aqui.
-            </p>
-          </Card>
+          <div className="card-premium p-8 text-center space-y-3">
+            <Star className="w-12 h-12 mx-auto text-muted-foreground/40" />
+            <div>
+              <p className="font-medium text-foreground">Nenhuma avaliação ainda</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Suas avaliações como comprador e vendedor aparecerão aqui.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -237,7 +238,7 @@ export default function Reviews() {
 
           <TabsContent value="received" className="mt-4 space-y-3">
             {receivedReviews.map((review) => (
-              <Card key={review.id} className="p-4">
+              <div key={review.id} className="card-premium p-4">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
                     <User className="w-5 h-5 text-muted-foreground" />
@@ -262,13 +263,13 @@ export default function Reviews() {
                     </Badge>
                   </div>
                 </div>
-              </Card>
+              </div>
             ))}
           </TabsContent>
 
           <TabsContent value="given" className="mt-4 space-y-3">
             {givenReviews.map((review) => (
-              <Card key={review.id} className="p-4">
+              <div key={review.id} className="card-premium p-4">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
                     <User className="w-5 h-5 text-muted-foreground" />
@@ -290,7 +291,7 @@ export default function Reviews() {
                     )}
                   </div>
                 </div>
-              </Card>
+              </div>
             ))}
           </TabsContent>
         </Tabs>

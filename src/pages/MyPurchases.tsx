@@ -168,16 +168,18 @@ export default function MyPurchases() {
         </header>
 
         <div className="px-4 py-6">
-          <Card className="p-8 text-center">
-            <ShoppingBag className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="font-medium text-lg mb-2">Nenhuma compra ainda</h3>
-            <p className="text-muted-foreground text-sm mb-4">
-              Quando você fizer uma compra, ela aparecerá aqui.
-            </p>
-            <Button onClick={() => navigate('/')}>
+          <div className="card-premium p-8 text-center space-y-3">
+            <ShoppingBag className="w-12 h-12 mx-auto text-muted-foreground/40" />
+            <div>
+              <p className="font-medium text-foreground">Nenhuma compra ainda</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Quando você fizer uma compra, ela aparecerá aqui.
+              </p>
+            </div>
+            <Button onClick={() => navigate('/')} className="rounded-xl">
               Explorar peças
             </Button>
-          </Card>
+          </div>
         </div>
       </div>
     );

@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { VitePWA } from "vite-plugin-pwa";
+import pkg from "./package.json";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -13,7 +14,7 @@ export default defineConfig(({ mode }) => ({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'robots.txt', 'placeholder.svg'],
+      includeAssets: ['favicon.ico', 'favicon.png', 'apple-touch-icon.png', 'robots.txt', 'placeholder.svg', 'apple-icons/*.png'],
       manifest: {
         name: 'Kura - Brechó Online',
         short_name: 'Kura',
@@ -41,6 +42,26 @@ export default defineConfig(({ mode }) => ({
             type: 'image/png',
             purpose: 'maskable',
           },
+          {
+            src: '/apple-icons/apple-touch-icon-180x180.png',
+            sizes: '180x180',
+            type: 'image/png',
+          },
+          {
+            src: '/apple-icons/apple-touch-icon-167x167.png',
+            sizes: '167x167',
+            type: 'image/png',
+          },
+          {
+            src: '/apple-icons/apple-touch-icon-152x152.png',
+            sizes: '152x152',
+            type: 'image/png',
+          },
+          {
+            src: '/apple-icons/apple-touch-icon-120x120.png',
+            sizes: '120x120',
+            type: 'image/png',
+          },
         ],
       },
       workbox: {
@@ -62,6 +83,9 @@ export default defineConfig(({ mode }) => ({
       },
     }),
   ].filter(Boolean),
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
