@@ -9,7 +9,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { LocationUpdateSheet } from '@/components/location';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NotificationCenter } from '@/components/notifications';
-import kuraIcon from '@/assets/kura-icon.png';
+import kuraK from '@/assets/kura-k.svg';
 
 export function Header() {
   const { user } = useAuth();
@@ -37,7 +37,7 @@ export function Header() {
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label="Voltar ao início">
-              <img src={kuraIcon} alt="Kura" className="w-9 h-9 rounded-xl object-cover" loading="eager" decoding="sync" fetchPriority="high" />
+              <img src={kuraK} alt="Kura" className="w-9 h-9 object-contain" loading="eager" decoding="sync" fetchPriority="high" />
             </button>
             <motion.button 
               onClick={() => setShowLocationSheet(true)}
