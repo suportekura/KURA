@@ -296,7 +296,6 @@ export default function Auth() {
   // Send verification code via Resend
   const sendVerificationCode = useCallback(async (targetEmail: string, type: 'email_verification' | 'password_reset' = 'email_verification'): Promise<boolean> => {
     try {
-      console.log("[Auth] Sending verification code to:", targetEmail);
       
       const { data, error } = await supabase.functions.invoke('send-verification-code', {
         body: { email: targetEmail, type },
@@ -322,7 +321,6 @@ export default function Auth() {
         return false;
       }
 
-      console.log("[Auth] Verification code sent successfully:", data.messageId);
       return true;
     } catch (err) {
       console.error("[Auth] Exception sending verification code:", err);
@@ -335,35 +333,44 @@ export default function Auth() {
     }
   }, [toast]);
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     setLoading(true);
+    try {
+      if (userType) {
+        sessionStorage.setItem('oauth_pending_user_type', userType);
+      } else {
+        sessionStorage.removeItem('oauth_pending_user_type');
+      }
 
-    const redirectUri = import.meta.env.DEV
-      ? 'http://localhost:8080/auth/callback'
-      : 'https://kuralab.com.br/auth/callback';
+      const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
 
-    const state = crypto.randomUUID();
-    sessionStorage.setItem('oauth_state', state);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${siteUrl}/auth/callback`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+        },
+      });
 
-    // Preserve account type selection across the OAuth redirect so the user
-    // doesn't have to choose PF/PJ again after returning from Google
-    if (userType) {
-      sessionStorage.setItem('oauth_pending_user_type', userType);
-    } else {
-      sessionStorage.removeItem('oauth_pending_user_type');
+      if (error) {
+        toast({
+          title: 'Erro ao entrar com Google',
+          description: translateAuthError(error.message),
+          variant: 'destructive',
+        });
+        setLoading(false);
+      }
+    } catch (err) {
+      toast({
+        title: 'Erro ao entrar com Google',
+        description: 'Não foi possível conectar com o Google. Tente novamente.',
+        variant: 'destructive',
+      });
+      setLoading(false);
     }
-
-    const params = new URLSearchParams({
-      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-      redirect_uri: redirectUri,
-      response_type: 'code',
-      scope: 'openid email profile',
-      access_type: 'offline',
-      state,
-      prompt: 'select_account',
-    });
-
-    window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
   };
 
   const handleAppleSignIn = async () => {

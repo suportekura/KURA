@@ -51,6 +51,3 @@ verify_jwt = false
 
 [functions.create-plan-payment-card]
 verify_jwt = false
-
-[functions.google-oauth-exchange]
-verify_jwt = false

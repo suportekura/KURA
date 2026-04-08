@@ -10,15 +10,10 @@ const AuthCallback = () => {
 
   useEffect(() => {
     const handleCallback = async () => {
-      // Clean up oauth_state (CSRF token) — no longer needed once we're in the callback
       const params = new URLSearchParams(window.location.search);
-      const code = params.get('code');
       const error = params.get('error');
-      const returnedState = params.get('state');
-      const expectedState = sessionStorage.getItem('oauth_state');
 
       if (error) {
-        sessionStorage.removeItem('oauth_state');
         toast({
           title: 'Erro ao entrar com Google',
           description: 'O login com Google foi cancelado ou falhou. Tente novamente.',
@@ -28,34 +23,13 @@ const AuthCallback = () => {
         return;
       }
 
-      if (!code) {
-        sessionStorage.removeItem('oauth_state');
-        navigate('/auth');
-        return;
-      }
+      // Exchange the PKCE auth code for a Supabase session.
+      // exchangeCodeForSession reads the `code` query param from the URL automatically.
+      const { data, error: sessionError } = await supabase.auth.exchangeCodeForSession(
+        window.location.href
+      );
 
-      if (!returnedState || !expectedState || returnedState !== expectedState) {
-        sessionStorage.removeItem('oauth_state');
-        toast({
-          title: 'Sessão inválida de autenticação',
-          description: 'O retorno do Google não pôde ser validado. Tente novamente.',
-          variant: 'destructive',
-        });
-        navigate('/auth');
-        return;
-      }
-
-      sessionStorage.removeItem('oauth_state');
-
-      const redirectUri = import.meta.env.DEV
-        ? 'http://localhost:8080/auth/callback'
-        : 'https://kuralab.com.br/auth/callback';
-
-      const { data, error: exchangeError } = await supabase.functions.invoke('google-oauth-exchange', {
-        body: { code, redirect_uri: redirectUri },
-      });
-
-      if (exchangeError || !data?.id_token) {
+      if (sessionError || !data?.user) {
         toast({
           title: 'Erro ao autenticar',
           description: 'Não foi possível completar o login com Google. Tente novamente.',
@@ -65,42 +39,28 @@ const AuthCallback = () => {
         return;
       }
 
-      const { data: authData, error: signInError } = await supabase.auth.signInWithIdToken({
-        provider: 'google',
-        token: data.id_token,
-        access_token: data.access_token,
-      });
+      const user = data.user;
 
-      if (signInError) {
-        toast({
-          title: 'Erro ao autenticar',
-          description: 'Não foi possível completar o login com Google. Tente novamente.',
-          variant: 'destructive',
-        });
+      // Google verifies the user's email — ensure our profile reflects this so
+      // useAuth doesn't sign the user out seeing email_verified = false.
+      await supabase
+        .from('profiles')
+        .update({ email_verified: true })
+        .eq('user_id', user.id);
+
+      // Check if this Google user still needs to complete their Kura profile.
+      // If incomplete, navigate to /auth where Auth.tsx checkProfileStatus() will
+      // detect the Google user, read oauth_pending_user_type from sessionStorage,
+      // and show the correct signup step.
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('profile_completed, user_type')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!profile?.profile_completed || !profile?.user_type) {
         navigate('/auth');
         return;
-      }
-
-      // Google already verified the user's email — ensure the profile reflects this.
-      // Without this, useAuth sees email_verified=false and immediately signs the user out.
-      if (authData?.user?.id) {
-        await supabase
-          .from('profiles')
-          .update({ email_verified: true })
-          .eq('user_id', authData.user.id);
-
-        // Check if profile is complete — new Google users must finish signup before entering the app
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('profile_completed, user_type')
-          .eq('user_id', authData.user.id)
-          .single();
-
-        if (!profile?.profile_completed || !profile?.user_type) {
-          // Incomplete profile → go to /auth so Auth.tsx shows the Google signup flow
-          navigate('/auth');
-          return;
-        }
       }
 
       navigate('/');
