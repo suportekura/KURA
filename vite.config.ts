@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => ({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'robots.txt', 'placeholder.svg', 'apple-icons/*.png'],
+      includeAssets: ['favicon.ico', 'favicon.png', 'apple-touch-icon.png', 'robots.txt', 'placeholder.svg', 'apple-icons/*.png'],
       manifest: {
         name: 'Kura - Brechó Online',
         short_name: 'Kura',
