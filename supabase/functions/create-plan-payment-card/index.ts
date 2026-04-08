@@ -233,17 +233,20 @@ const handler = async (req: Request): Promise<Response> => {
         expiresAt.setMonth(expiresAt.getMonth() + 1);
       }
 
-      await supabase
+      const { error: upsertError } = await supabase
         .from("user_subscriptions")
         .upsert({
           user_id: userId,
           plan_type,
-          started_at: new Date().toISOString(),
           expires_at: expiresAt.toISOString(),
           updated_at: new Date().toISOString(),
         }, { onConflict: "user_id" });
 
-      console.log("[create-plan-payment-card] Subscription activated:", plan_type, cycle);
+      if (upsertError) {
+        console.error("[create-plan-payment-card] Failed to activate subscription:", upsertError);
+      } else {
+        console.log("[create-plan-payment-card] Subscription activated:", plan_type, cycle);
+      }
     }
 
     if (!isPaid) {

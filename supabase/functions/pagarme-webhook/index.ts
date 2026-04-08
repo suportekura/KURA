@@ -2,13 +2,15 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 async function verifySignature(body: string, signatureHeader: string | null): Promise<boolean> {
-  const apiKey = Deno.env.get("PAGARME_API_KEY");
-  if (!apiKey || !signatureHeader) return false;
+  // Use PAGARME_WEBHOOK_SECRET (the webhook password configured in Pagar.me dashboard).
+  // Falls back to PAGARME_API_KEY for backwards compatibility if the secret is not set.
+  const secret = Deno.env.get("PAGARME_WEBHOOK_SECRET") || Deno.env.get("PAGARME_API_KEY");
+  if (!secret || !signatureHeader) return false;
 
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     "raw",
-    encoder.encode(apiKey),
+    encoder.encode(secret),
     { name: "HMAC", hash: "SHA-1" },
     false,
     ["sign"]
@@ -189,17 +191,20 @@ const handler = async (req: Request): Promise<Response> => {
             expiresAt.setMonth(expiresAt.getMonth() + 1);
           }
 
-          await supabase
+          const { error: upsertError } = await supabase
             .from("user_subscriptions")
             .upsert({
               user_id: planPayment.user_id,
               plan_type: planPayment.plan_type,
-              started_at: new Date().toISOString(),
               expires_at: expiresAt.toISOString(),
               updated_at: new Date().toISOString(),
             }, { onConflict: "user_id" });
 
-          console.log("[pagarme-webhook] Plan activated:", planPayment.plan_type, planPayment.billing_cycle);
+          if (upsertError) {
+            console.error("[pagarme-webhook] Failed to activate subscription:", upsertError);
+          } else {
+            console.log("[pagarme-webhook] Plan activated:", planPayment.plan_type, planPayment.billing_cycle);
+          }
         }
 
         return new Response(JSON.stringify({ received: true, confirmed: true }), {
