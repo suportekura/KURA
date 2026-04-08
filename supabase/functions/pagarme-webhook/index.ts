@@ -201,9 +201,9 @@ const handler = async (req: Request): Promise<Response> => {
             }, { onConflict: "user_id" });
 
           if (upsertError) {
-            console.error("[pagarme-webhook] Failed to activate subscription:", upsertError);
+            console.error("[pagarme-webhook] CRITICAL: Subscription activation failed for user", planPayment.user_id, "plan", planPayment.plan_type, "error:", JSON.stringify(upsertError));
           } else {
-            console.log("[pagarme-webhook] Plan activated:", planPayment.plan_type, planPayment.billing_cycle);
+            console.log("[pagarme-webhook] Plan activated:", { user_id: planPayment.user_id, plan_type: planPayment.plan_type, billing_cycle: planPayment.billing_cycle, expires_at: expiresAt.toISOString() });
           }
         }
 

@@ -64,13 +64,13 @@ export function useSellerProfile(sellerId: string | undefined) {
       if (profileError) throw profileError;
 
       // Fetch active subscription to determine verification level
+      const now = new Date().toISOString();
       const { data: subData } = await supabase
         .from('user_subscriptions')
-        .select('plan_type')
+        .select('plan_type, expires_at')
         .eq('user_id', sellerId)
-        .gte('expires_at', new Date().toISOString())
-        .order('expires_at', { ascending: false })
-        .limit(1)
+        .neq('plan_type', 'free')
+        .or(`expires_at.is.null,expires_at.gte.${now}`)
         .maybeSingle();
 
       let verificationLevel: VerificationLevel = null;
