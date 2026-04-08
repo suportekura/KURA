@@ -1,4 +1,5 @@
 import { ReactNode, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { BottomNav } from './BottomNav';
 import { Header } from './Header';
 import { PushPermissionPrompt } from '@/components/notifications/PushPermissionPrompt';
@@ -36,6 +37,11 @@ export function AppLayout({ children, showHeader = true }: AppLayoutProps) {
     <div className="min-h-screen bg-background pb-20">
       {showHeader && <Header />}
       <main>{children}</main>
+      <footer className="pb-24 pt-4 text-center text-xs text-muted-foreground/50 space-x-3 select-none">
+        <span>© Kura</span>
+        <Link to="/terms" className="hover:text-muted-foreground transition-colors">Termos de Uso</Link>
+        <Link to="/privacy-policy" className="hover:text-muted-foreground transition-colors">Política de Privacidade</Link>
+      </footer>
       <BottomNav />
       <PushPermissionPrompt />
       {showUsernameSheet && <UsernameSetupSheet />}

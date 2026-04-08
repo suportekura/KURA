@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronRight, User, Phone, Lock, Trash2, HelpCircle, Shield, ArrowLeft, MapPin, ShieldCheck, ClipboardList, Bell } from 'lucide-react';
+import { ChevronRight, User, Phone, Lock, Trash2, HelpCircle, Shield, ArrowLeft, MapPin, ShieldCheck, ClipboardList, Bell, FileText } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -44,10 +44,16 @@ const supportItems = [
     href: '/settings/support',
   },
   {
-    icon: Shield,
-    label: 'Privacidade e segurança',
-    description: 'Termos e políticas',
+    icon: FileText,
+    label: 'Termos de Uso',
+    description: 'Termos e condições do serviço',
     href: '/terms',
+  },
+  {
+    icon: Shield,
+    label: 'Política de Privacidade',
+    description: 'Como tratamos seus dados',
+    href: '/privacy-policy',
   },
 ];
 
