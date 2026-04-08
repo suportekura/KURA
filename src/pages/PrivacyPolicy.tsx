@@ -27,7 +27,6 @@ export default function PrivacyPolicy() {
             </CardTitle>
           </CardHeader>
           <CardContent className="prose prose-sm dark:prose-invert max-w-none">
-            <p className="text-muted-foreground italic text-lg mb-6">Em revisão</p>
             <div className="space-y-6 text-muted-foreground">
               <section>
                 <h3 className="text-lg font-semibold text-foreground mb-2">1. Coleta de Dados</h3>
@@ -66,7 +65,23 @@ export default function PrivacyPolicy() {
                 </ul>
               </section>
               <section>
-                <h3 className="text-lg font-semibold text-foreground mb-2">5. Seus Direitos</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-2">5. Câmera e Fotos</h3>
+                <p>O Kura acessa sua câmera e biblioteca de fotos exclusivamente para que você fotografe e faça upload das peças que deseja vender. As imagens são enviadas ao nosso servidor e armazenadas de forma segura. Não compartilhamos suas fotos com terceiros além dos compradores interessados no produto anunciado.</p>
+              </section>
+              <section>
+                <h3 className="text-lg font-semibold text-foreground mb-2">6. Localização</h3>
+                <p>Coletamos sua localização geográfica (latitude e longitude) para exibir produtos disponíveis próximos a você e calcular distâncias. A localização é arredondada (~11m de precisão) para proteger sua privacidade. Usuários autenticados têm a localização armazenada na tabela user_locations; usuários não autenticados têm a localização salva apenas no dispositivo (localStorage). Você pode recusar o compartilhamento de localização a qualquer momento nas configurações do dispositivo.</p>
+              </section>
+              <section>
+                <h3 className="text-lg font-semibold text-foreground mb-2">7. Inteligência Artificial e Moderação</h3>
+                <p>O Kura utiliza a API Google Gemini para moderar imagens e textos enviados à plataforma, verificando a conformidade com nossas políticas de uso. As imagens e descrições dos produtos são enviadas à API do Google para análise. Não compartilhamos informações de identificação pessoal com o Google neste processo. Consulte a Política de Privacidade do Google para detalhes sobre como a Google processa esses dados.</p>
+              </section>
+              <section>
+                <h3 className="text-lg font-semibold text-foreground mb-2">8. Login Social</h3>
+                <p>Você pode se cadastrar e autenticar usando sua conta Google ou Apple. Ao usar esses provedores, coletamos apenas o nome e e-mail fornecidos pelo serviço. Não armazenamos senhas de contas Google ou Apple. Consulte as políticas de privacidade do Google e da Apple para detalhes.</p>
+              </section>
+              <section>
+                <h3 className="text-lg font-semibold text-foreground mb-2">9. Seus Direitos</h3>
                 <p>De acordo com a LGPD (Lei Geral de Proteção de Dados), você tem direito a:</p>
                 <ul className="list-disc list-inside space-y-2 mt-2">
                   <li>Acessar seus dados pessoais</li>
@@ -76,18 +91,18 @@ export default function PrivacyPolicy() {
                 </ul>
               </section>
               <section>
-                <h3 className="text-lg font-semibold text-foreground mb-2">6. Retenção de Dados</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-2">10. Retenção de Dados</h3>
                 <p>Mantemos seus dados enquanto sua conta estiver ativa ou conforme necessário para cumprir obrigações legais, resolver disputas e fazer cumprir nossos acordos.</p>
               </section>
               <section>
-                <h3 className="text-lg font-semibold text-foreground mb-2">7. Contato</h3>
+                <h3 className="text-lg font-semibold text-foreground mb-2">11. Contato</h3>
                 <p>Para questões sobre privacidade ou para exercer seus direitos, entre em contato conosco através do e-mail: <span className="text-primary font-medium">privacidade@kuralab.com.br</span></p>
               </section>
             </div>
           </CardContent>
         </Card>
         <div className="text-center text-sm text-muted-foreground">
-          <p>Última atualização: Janeiro de 2026</p>
+          <p>Última atualização: Abril de 2026</p>
         </div>
       </main>
     </div>

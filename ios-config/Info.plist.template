@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>pt-BR</string>
+	<key>CFBundleDisplayName</key>
+	<string>Kura</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>armv7</string>
+	</array>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<true/>
+
+	<!-- Camera Permission -->
+	<key>NSCameraUsageDescription</key>
+	<string>O Kura precisa acessar sua camera para que voce possa fotografar as pecas que deseja vender.</string>
+
+	<!-- Photo Library Read Permission -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>O Kura precisa acessar sua biblioteca de fotos para que voce possa selecionar imagens das pecas que deseja vender.</string>
+
+	<!-- Photo Library Write Permission -->
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>O Kura precisa de permissao para salvar imagens na sua biblioteca de fotos.</string>
+
+	<!-- Location Permission (When In Use) -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>O Kura usa sua localizacao para exibir produtos disponiveis perto de voce e calcular distancias.</string>
+
+	<!-- Push Notifications -->
+	<key>NSUserNotificationsUsageDescription</key>
+	<string>O Kura envia notificacoes sobre mensagens, ofertas e atualizacoes dos seus anuncios.</string>
+
+	<!-- App Transport Security - HTTPS only -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+	</dict>
+
+	<!-- Encryption compliance - uses only HTTPS (exempt) -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+
+	<!-- Deep linking / Universal Links -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>https</string>
+		<string>itms-appss</string>
+	</array>
+
+	<!-- URL Schemes for OAuth callbacks -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.kuralab.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.kuralab.app</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

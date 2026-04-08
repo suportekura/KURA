@@ -5,6 +5,7 @@ import kuraLogoAuth from '@/assets/kura-logo-auth.png';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { ProfileSetupForm } from '@/components/auth/ProfileSetupForm';
+import { AppleSignInButton } from '@/components/auth/AppleSignInButton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -363,6 +364,41 @@ export default function Auth() {
     });
 
     window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+  };
+
+  const handleAppleSignIn = async () => {
+    setLoading(true);
+    try {
+      // Preserve account type selection across the OAuth redirect
+      if (userType) {
+        sessionStorage.setItem('oauth_pending_user_type', userType);
+      } else {
+        sessionStorage.removeItem('oauth_pending_user_type');
+      }
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        toast({
+          title: 'Erro ao entrar com Apple',
+          description: translateAuthError(error.message),
+          variant: 'destructive',
+        });
+        setLoading(false);
+      }
+    } catch (err) {
+      toast({
+        title: 'Erro ao entrar com Apple',
+        description: 'Não foi possível conectar com a Apple. Tente novamente.',
+        variant: 'destructive',
+      });
+      setLoading(false);
+    }
   };
 
   // ===== LOGIN HANDLERS =====
@@ -1073,6 +1109,8 @@ export default function Auth() {
             </div>
           </div>
 
+          <AppleSignInButton onClick={handleAppleSignIn} isLoading={loading} label="Cadastrar com Apple" />
+
           <Button
             type="button"
             variant="outline"
@@ -1457,6 +1495,8 @@ export default function Auth() {
                   <span className="bg-card px-2 text-muted-foreground">ou</span>
                 </div>
               </div>
+
+              <AppleSignInButton onClick={handleAppleSignIn} isLoading={loading} label="Entrar com Apple" />
 
               <Button
                 type="button"
