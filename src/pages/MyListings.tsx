@@ -203,7 +203,7 @@ export default function MyListings() {
         </header>
         <div className="p-4 space-y-4">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-24 w-full" />
+            <Skeleton key={i} className="h-24 w-full rounded-2xl" />
           ))}
         </div>
       </div>
@@ -227,17 +227,19 @@ export default function MyListings() {
           </div>
         </header>
         <div className="px-4 py-6">
-          <Card className="p-8 text-center">
-            <Package className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="font-medium text-lg mb-2">Nenhum anúncio ainda</h3>
-            <p className="text-muted-foreground text-sm mb-4">
-              Comece a vender suas peças agora mesmo!
-            </p>
-            <Button onClick={() => navigate('/sell')}>
+          <div className="card-premium p-8 text-center space-y-3">
+            <Package className="w-12 h-12 mx-auto text-muted-foreground/40" />
+            <div>
+              <p className="font-medium text-foreground">Nenhum anúncio ainda</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Comece a vender suas peças agora mesmo!
+              </p>
+            </div>
+            <Button onClick={() => navigate('/sell')} className="rounded-xl">
               <Plus className="w-4 h-4 mr-2" />
               Criar anúncio
             </Button>
-          </Card>
+          </div>
         </div>
       </div>
     );

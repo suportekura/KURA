@@ -425,6 +425,14 @@ QueryClientProvider → ThemeProvider → AuthProvider → GeolocationProvider �
 - **Never modify `src/integrations/supabase/types.ts` manually** — it's auto-generated from the database schema.
 - **Never expose raw latitude/longitude in public views or API responses** — use the `public_products` view or RPC functions that calculate distance without exposing coordinates.
 
+# Skills
+
+Antes de qualquer tarefa relacionada a frontend, UI ou componentes React, leia obrigatoriamente:
+
+```
+.claude/skills/frontend-design.md
+```
+
 # Versioning
 
 **Consulte `VERSIONING.md` antes de qualquer merge para `main`.**
