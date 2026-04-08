@@ -37,7 +37,7 @@ interface RecentSub {
   display_name: string | null;
   avatar_url: string | null;
   plan_type: string;
-  started_at: string;
+  created_at: string;
   expires_at: string | null;
 }
 
@@ -70,7 +70,7 @@ export default function AdminSubscriptions() {
     // Fetch all subscriptions
     const { data: allSubs } = await supabase
       .from('user_subscriptions')
-      .select('user_id, plan_type, started_at, expires_at, created_at');
+      .select('user_id, plan_type, expires_at, created_at, updated_at');
 
     const subs = allSubs || [];
 
@@ -84,7 +84,7 @@ export default function AdminSubscriptions() {
 
     // New in period
     const newInPeriod = subs.filter(s =>
-      s.plan_type !== 'free' && s.started_at >= since
+      s.plan_type !== 'free' && s.created_at >= since
     ).length;
 
     // Expired in period
@@ -104,8 +104,8 @@ export default function AdminSubscriptions() {
     const revenue = (payments || []).reduce((sum, p) => sum + Number(p.amount), 0);
 
     // Forecast: calculate from active subs
-    // Annual subs: expires_at - started_at > 2 months
-    const TWO_MONTHS_MS = 60 * 24 * 60 * 60 * 1000;
+    // Annual subs: expires_at - created_at > 2 months
+    const TWO_MONTHS_MS = 2 * 30 * 24 * 60 * 60 * 1000; // 60 days in ms
     // Plan prices (monthly): plus=39.90, loja=99.90 | annual: plus=383.04, loja=959.04
     const monthlyPrices: Record<string, number> = { plus: 39.90, loja: 99.90 };
     const annualPrices: Record<string, number> = { plus: 383.04, loja: 959.04 };
@@ -117,8 +117,8 @@ export default function AdminSubscriptions() {
     let mrrLoja = 0;
 
     active.forEach(s => {
-      const isAnnual = s.expires_at && s.started_at &&
-        (new Date(s.expires_at).getTime() - new Date(s.started_at).getTime()) > TWO_MONTHS_MS;
+      const isAnnual = s.expires_at && s.created_at &&
+        (new Date(s.expires_at).getTime() - new Date(s.created_at).getTime()) > TWO_MONTHS_MS;
 
       const monthlyPrice = monthlyPrices[s.plan_type] || 0;
 
@@ -162,8 +162,8 @@ export default function AdminSubscriptions() {
     }
 
     // Count new subscriptions per day
-    subs.filter(s => s.plan_type !== 'free' && s.started_at >= since).forEach(s => {
-      const key = s.started_at.slice(0, 10);
+    subs.filter(s => s.plan_type !== 'free' && s.created_at >= since).forEach(s => {
+      const key = s.created_at.slice(0, 10);
       if (dailyMap[key]) {
         if (s.plan_type === 'plus') dailyMap[key].plus++;
         if (s.plan_type === 'loja') dailyMap[key].loja++;
@@ -181,7 +181,7 @@ export default function AdminSubscriptions() {
     // Recent subscriptions with profile info
     const recentIds = subs
       .filter(s => s.plan_type !== 'free')
-      .sort((a, b) => b.started_at.localeCompare(a.started_at))
+      .sort((a, b) => b.created_at.localeCompare(a.created_at))
       .slice(0, 20);
 
     if (recentIds.length > 0) {
@@ -198,7 +198,7 @@ export default function AdminSubscriptions() {
         display_name: profileMap.get(s.user_id)?.display_name || null,
         avatar_url: profileMap.get(s.user_id)?.avatar_url || null,
         plan_type: s.plan_type,
-        started_at: s.started_at,
+        created_at: s.created_at,
         expires_at: s.expires_at,
       })));
     } else {
@@ -388,7 +388,7 @@ export default function AdminSubscriptions() {
                       )}
                     </TableCell>
                     <TableCell className="hidden sm:table-cell text-sm text-muted-foreground">
-                      {format(new Date(sub.started_at), 'dd/MM/yy', { locale: ptBR })}
+                      {format(new Date(sub.created_at), 'dd/MM/yy', { locale: ptBR })}
                     </TableCell>
                     <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                       {sub.expires_at ? format(new Date(sub.expires_at), 'dd/MM/yy', { locale: ptBR }) : '—'}

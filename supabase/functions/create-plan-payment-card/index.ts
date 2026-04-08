@@ -243,10 +243,18 @@ const handler = async (req: Request): Promise<Response> => {
         }, { onConflict: "user_id" });
 
       if (upsertError) {
-        console.error("[create-plan-payment-card] Failed to activate subscription:", upsertError);
-      } else {
-        console.log("[create-plan-payment-card] Subscription activated:", plan_type, cycle);
+        console.error("[create-plan-payment-card] CRITICAL: Failed to activate subscription for user", userId, "plan", plan_type, "error:", JSON.stringify(upsertError));
+        return new Response(JSON.stringify({
+          success: false,
+          error: "Pagamento confirmado, mas erro ao ativar o plano. Entre em contato com o suporte.",
+          paymentId: payment.id,
+          orderId: orderData.id,
+          activation_failed: true,
+        }), {
+          status: 200, headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
       }
+      console.log("[create-plan-payment-card] Subscription activated:", { userId, plan_type, cycle, expires_at: expiresAt.toISOString() });
     }
 
     if (!isPaid) {

@@ -189,12 +189,13 @@ export default function Profile() {
       
       const { data } = await supabase
         .from('user_subscriptions')
-        .select('plan_type')
+        .select('plan_type, expires_at')
         .eq('user_id', user.id)
         .maybeSingle();
-      
+
       if (data) {
-        setPlanType(data.plan_type);
+        const isActive = !data.expires_at || new Date(data.expires_at) > new Date();
+        setPlanType(isActive ? data.plan_type : 'free');
       }
     };
     
