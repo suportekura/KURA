@@ -105,7 +105,7 @@ export default function AdminSubscriptions() {
 
     // Forecast: calculate from active subs
     // Annual subs: expires_at - created_at > 2 months
-    const TWO_MONTHS_MS = 60 * 24 * 60 * 60 * 1000;
+    const TWO_MONTHS_MS = 2 * 30 * 24 * 60 * 60 * 1000; // 60 days in ms
     // Plan prices (monthly): plus=39.90, loja=99.90 | annual: plus=383.04, loja=959.04
     const monthlyPrices: Record<string, number> = { plus: 39.90, loja: 99.90 };
     const annualPrices: Record<string, number> = { plus: 383.04, loja: 959.04 };

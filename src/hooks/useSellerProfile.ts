@@ -70,7 +70,7 @@ export function useSellerProfile(sellerId: string | undefined) {
         .select('plan_type, expires_at')
         .eq('user_id', sellerId)
         .neq('plan_type', 'free')
-        .or(`expires_at.is.null,expires_at.gte.${now}`)
+        .or(`expires_at.is.null,expires_at.gte."${now}"`)
         .maybeSingle();
 
       let verificationLevel: VerificationLevel = null;

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { CreditCard, Loader2, Lock, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { CreditCard, Loader2, Lock, AlertCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -49,6 +49,7 @@ export function CreditCardPaymentModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [activationFailed, setActivationFailed] = useState(false);
 
   const [cardNumber, setCardNumber] = useState('');
   const [holderName, setHolderName] = useState('');
@@ -56,7 +57,7 @@ export function CreditCardPaymentModal({
   const [cvv, setCvv] = useState('');
 
   useEffect(() => {
-    if (open) { setError(''); setSuccess(false); }
+    if (open) { setError(''); setSuccess(false); setActivationFailed(false); }
   }, [open]);
 
   const isValid =
@@ -86,6 +87,12 @@ export function CreditCardPaymentModal({
       });
 
       if (fnError || !data?.success) {
+        if (data?.activation_failed) {
+          // Payment was charged but subscription activation failed — show a distinct warning
+          setActivationFailed(true);
+          setCardNumber(''); setHolderName(''); setExpiry(''); setCvv('');
+          return;
+        }
         setError(data?.error || fnError?.message || 'Erro ao processar pagamento');
         return;
       }
@@ -104,7 +111,20 @@ export function CreditCardPaymentModal({
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!isProcessing) onOpenChange(v); }}>
       <DialogContent className="!left-auto !right-auto !translate-x-0 inset-x-4 sm:!left-[50%] sm:!translate-x-[-50%] sm:inset-x-auto sm:max-w-md rounded-2xl border-border/30 shadow-[0_16px_48px_-12px_hsl(var(--foreground)/0.12)] p-0 gap-0 overflow-hidden">
-        {success ? (
+        {activationFailed ? (
+          <div className="flex flex-col items-center justify-center px-6 py-12 text-center gap-4">
+            <AlertTriangle className="w-16 h-16 text-amber-500" />
+            <h2 className="text-lg font-semibold text-foreground">Pagamento confirmado</h2>
+            <p className="text-sm text-muted-foreground">
+              Seu pagamento foi processado com sucesso, mas houve um erro ao ativar o plano.
+              Entre em contato com o suporte informando seu e-mail e o plano contratado.
+            </p>
+            <p className="text-xs font-medium text-primary">suporte@kuralab.com.br</p>
+            <Button className="w-full rounded-xl" onClick={() => onOpenChange(false)}>
+              Fechar
+            </Button>
+          </div>
+        ) : success ? (
           <div className="flex flex-col items-center justify-center px-6 py-12 text-center gap-4">
             <CheckCircle2 className="w-16 h-16 text-green-500" />
             <h2 className="text-lg font-semibold text-foreground">Pagamento realizado!</h2>
