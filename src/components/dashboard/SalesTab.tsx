@@ -31,8 +31,8 @@ export function SalesTab({ salesMetrics, salesChartData, hasSubscription, premiu
             <AreaChart data={salesChartData} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(80 60% 35%)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(80 60% 35%)" stopOpacity={0} />
+                  <stop offset="0%" stopColor="hsl(96 20% 29%)" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="hsl(96 20% 29%)" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(45 20% 88%)" vertical={false} />
@@ -43,7 +43,7 @@ export function SalesTab({ salesMetrics, salesChartData, hasSubscription, premiu
                 formatter={(value: number) => [formatCurrency(value), 'Receita']}
                 labelStyle={{ fontWeight: 600, marginBottom: 4 }}
               />
-              <Area type="monotone" dataKey="revenue" stroke="hsl(80 60% 35%)" strokeWidth={2} fill="url(#salesGradient)" />
+              <Area type="monotone" dataKey="revenue" stroke="hsl(96 20% 29%)" strokeWidth={2} fill="url(#salesGradient)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
