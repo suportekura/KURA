@@ -37,7 +37,7 @@ export function Header() {
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} aria-label="Voltar ao início">
-              <img src={kuraLogo} alt="Kura" className="w-12 h-12 object-contain block" loading="eager" decoding="sync" fetchPriority="high" />
+              <img src={kuraLogo} alt="Kura" className="w-9 h-9 object-contain block" loading="eager" decoding="sync" fetchPriority="high" />
             </button>
             <motion.button
               onClick={() => setShowLocationSheet(true)}

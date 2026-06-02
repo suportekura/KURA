@@ -22,7 +22,7 @@ html {
     --popover-foreground: 40 15% 20%;
 
     /* Verde Musgo Pastel - Primary */
-    --primary: 80 60% 35%;
+    --primary: 96 20% 29%;
     --primary-foreground: 45 30% 97%;
 
     /* Marrom Oliva Pastel - Secondary */
@@ -42,14 +42,14 @@ html {
 
     --border: 45 20% 88%;
     --input: 45 20% 90%;
-    --ring: 80 60% 35%;
+    --ring: 96 20% 29%;
 
     --radius: 1rem;
 
     /* Custom tokens */
     --olive-warm: 45 25% 92%;
     --olive-muted: 50 20% 85%;
-    --success: 80 50% 40%;
+    --success: 100 26% 34%;
     --success-foreground: 45 30% 97%;
 
     /* Shadows */
@@ -60,12 +60,12 @@ html {
     /* Sidebar */
     --sidebar-background: 45 30% 97%;
     --sidebar-foreground: 40 15% 20%;
-    --sidebar-primary: 80 60% 35%;
+    --sidebar-primary: 96 20% 29%;
     --sidebar-primary-foreground: 45 30% 97%;
     --sidebar-accent: 60 25% 50%;
     --sidebar-accent-foreground: 40 15% 20%;
     --sidebar-border: 45 20% 88%;
-    --sidebar-ring: 80 60% 35%;
+    --sidebar-ring: 96 20% 29%;
   }
 
   .dark {
@@ -79,9 +79,9 @@ html {
     --popover: 80 18% 12%;
     --popover-foreground: 45 20% 92%;
 
-    /* Verde Musgo Deep */
-    --primary: 80 45% 50%;
-    --primary-foreground: 80 20% 10%;
+    /* Verde Musgo Deep — olive da marca (igual à caixa da logo) */
+    --primary: 98 17% 28%;
+    --primary-foreground: 45 30% 95%;
 
     /* Marrom Oliva Deep */
     --secondary: 50 30% 35%;
@@ -100,12 +100,12 @@ html {
 
     --border: 80 15% 20%;
     --input: 80 15% 18%;
-    --ring: 80 45% 50%;
+    --ring: 96 30% 50%;
 
     /* Custom tokens dark */
     --olive-warm: 80 15% 16%;
     --olive-muted: 80 12% 22%;
-    --success: 80 40% 45%;
+    --success: 100 30% 46%;
     --success-foreground: 80 20% 10%;
 
     /* Shadows dark */
@@ -116,12 +116,12 @@ html {
     /* Sidebar dark */
     --sidebar-background: 80 20% 10%;
     --sidebar-foreground: 45 20% 92%;
-    --sidebar-primary: 80 45% 50%;
-    --sidebar-primary-foreground: 80 20% 10%;
+    --sidebar-primary: 98 17% 28%;
+    --sidebar-primary-foreground: 45 30% 95%;
     --sidebar-accent: 60 25% 40%;
     --sidebar-accent-foreground: 45 20% 92%;
     --sidebar-border: 80 15% 20%;
-    --sidebar-ring: 80 45% 50%;
+    --sidebar-ring: 96 30% 50%;
   }
 }
 
