@@ -1,7 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useMemo, useRef } from 'react';
-import leafIcon from '@/assets/leaf-icon.png';
-import kuraLogo from '@/assets/kura-logo.png';
+import kuraLogo from '@/assets/kura-wordmark-flat.png';
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -80,7 +79,7 @@ export function SplashScreen({ onComplete, persistent = false }: SplashScreenPro
     <motion.div
       className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden"
       style={{
-        background: 'linear-gradient(160deg, #343f2e 0%, #3a4634 60%, #2f3a29 100%)',
+        background: '#1B1F14',
       }}
       animate={isMorphing ? { opacity: 0 } : { opacity: 1 }}
       transition={isMorphing ? { duration: 0.8, delay: 0.1, ease: [0.45, 0, 0.55, 1] } : {}}
@@ -156,54 +155,12 @@ export function SplashScreen({ onComplete, persistent = false }: SplashScreenPro
               }
         }
       >
-        {/* "Kura" logo image */}
+        {/* "Kura" wordmark logo (leaf is baked into the artwork) */}
         <img
           src={kuraLogo}
           alt="Kura"
           className="w-80 sm:w-96 h-auto"
         />
-
-        {/* Right leaf (appears first) */}
-        <motion.div
-          className="absolute overflow-hidden"
-          style={{ right: '3.5%', top: '20%', width: 28, height: 28 }}
-          initial={{ opacity: 0, scale: 0, rotate: -20 }}
-          animate={isMorphing ? { opacity: 0, scale: 0 } : { opacity: 1, scale: 1, rotate: 0 }}
-          transition={
-            isMorphing
-              ? { duration: 0.3 }
-              : { delay: 0.8, duration: 0.6, ease: [0.16, 1, 0.3, 1] }
-          }
-        >
-          <img
-            src={leafIcon}
-            alt=""
-            width={28}
-            height={28}
-            style={{ clipPath: 'inset(0 0 0 45%)' }}
-          />
-        </motion.div>
-
-        {/* Left leaf (appears second) */}
-        <motion.div
-          className="absolute overflow-hidden"
-          style={{ right: '3.5%', top: '20%', width: 28, height: 28 }}
-          initial={{ opacity: 0, scale: 0, rotate: 20 }}
-          animate={isMorphing ? { opacity: 0, scale: 0 } : { opacity: 1, scale: 1, rotate: 0 }}
-          transition={
-            isMorphing
-              ? { duration: 0.3 }
-              : { delay: 1.1, duration: 0.6, ease: [0.16, 1, 0.3, 1] }
-          }
-        >
-          <img
-            src={leafIcon}
-            alt=""
-            width={28}
-            height={28}
-            style={{ clipPath: 'inset(0 55% 0 0)' }}
-          />
-        </motion.div>
       </motion.div>
     </motion.div>
   );

@@ -1,7 +1,7 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { isValidUsernameFormat, generateUsernameSuggestions } from '@/lib/usernameValidation';
-import kuraLogoAuth from '@/assets/kura-logo-auth.png';
+import kuraLogoAuth from '@/assets/kura-wordmark-flat.png';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { ProfileSetupForm } from '@/components/auth/ProfileSetupForm';
@@ -1428,7 +1428,7 @@ export default function Auth() {
 
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <img src={kuraLogoAuth} alt="Kura" className="h-12 mx-auto mb-2" />
+            <img src={kuraLogoAuth} alt="Kura" className="h-16 mx-auto mb-2" />
             <CardTitle className="sr-only">Kura</CardTitle>
             <CardDescription>Complete seu cadastro para continuar</CardDescription>
           </CardHeader>
@@ -1457,7 +1457,7 @@ export default function Auth() {
 
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <img src={kuraLogoAuth} alt="Kura" className="h-12 mx-auto mb-2" />
+          <img src={kuraLogoAuth} alt="Kura" className="h-16 mx-auto mb-2" />
           <CardTitle className="sr-only">Kura</CardTitle>
           <CardDescription>Compre e venda peças únicas perto de você</CardDescription>
         </CardHeader>
