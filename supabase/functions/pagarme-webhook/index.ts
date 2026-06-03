@@ -1,28 +1,45 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-async function verifySignature(body: string, signatureHeader: string | null): Promise<boolean> {
-  // Use PAGARME_WEBHOOK_SECRET (the webhook password configured in Pagar.me dashboard).
-  // Falls back to PAGARME_API_KEY for backwards compatibility if the secret is not set.
-  const secret = Deno.env.get("PAGARME_WEBHOOK_SECRET") || Deno.env.get("PAGARME_API_KEY");
-  if (!secret || !signatureHeader) return false;
+// Constant-time string comparison to avoid timing attacks.
+function safeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
 
-  const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(secret),
-    { name: "HMAC", hash: "SHA-1" },
-    false,
-    ["sign"]
-  );
-  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(body));
-  const expectedSignature = Array.from(new Uint8Array(signature))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
+// Pagar.me API v5 secures webhooks via optional HTTP Basic Authentication.
+// Configure the same user/password in the Pagar.me dashboard (endpoint > Autenticação)
+// and as the PAGARME_WEBHOOK_USER / PAGARME_WEBHOOK_PASSWORD secrets in Supabase.
+function verifyBasicAuth(authHeader: string | null): boolean {
+  const expectedUser = Deno.env.get("PAGARME_WEBHOOK_USER");
+  const expectedPass = Deno.env.get("PAGARME_WEBHOOK_PASSWORD");
 
-  // Compare safely
-  const received = (signatureHeader.replace("sha1=", "")).toLowerCase();
-  return expectedSignature === received;
+  // Fail closed: if no credentials are configured, never accept the request.
+  if (!expectedUser || !expectedPass) {
+    console.error("[pagarme-webhook] Missing PAGARME_WEBHOOK_USER/PAGARME_WEBHOOK_PASSWORD secrets.");
+    return false;
+  }
+
+  if (!authHeader || !authHeader.toLowerCase().startsWith("basic ")) return false;
+
+  let decoded: string;
+  try {
+    decoded = atob(authHeader.slice(6).trim());
+  } catch {
+    return false;
+  }
+
+  // Split on the FIRST colon only (the password may itself contain colons).
+  const sepIndex = decoded.indexOf(":");
+  if (sepIndex === -1) return false;
+  const user = decoded.slice(0, sepIndex);
+  const pass = decoded.slice(sepIndex + 1);
+
+  return safeEqual(user, expectedUser) && safeEqual(pass, expectedPass);
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -33,12 +50,12 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const rawBody = await req.text();
 
-    // Verify webhook signature from Pagar.me
-    const signatureHeader = req.headers.get("x-hub-signature");
-    const isValid = await verifySignature(rawBody, signatureHeader);
+    // Authenticate the webhook via HTTP Basic Auth (Pagar.me v5 mechanism).
+    const authHeader = req.headers.get("authorization");
+    const isValid = verifyBasicAuth(authHeader);
     if (!isValid) {
-      console.error("[pagarme-webhook] Invalid signature. Rejecting request.");
-      return new Response(JSON.stringify({ error: "Invalid signature" }), {
+      console.error("[pagarme-webhook] Unauthorized webhook request. Rejecting.");
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401, headers: { "Content-Type": "application/json" },
       });
     }
