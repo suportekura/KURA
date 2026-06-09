@@ -77,7 +77,9 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("[pagarme-webhook] Event:", eventType, "ID:", data.id);
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const orderId = data.id;
+    // charge.* events carry data.id = charge ID (ch_xxx); the order ID is in data.order.id.
+    // order.* events carry data.id = order ID (or_xxx) directly.
+    const orderId = eventType.startsWith("charge.") ? (data.order?.id ?? data.id) : data.id;
 
     // Try to find in boost_payments first
     const pagarmePaymentId = `pagarme_${orderId}`;
