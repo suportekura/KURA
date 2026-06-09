@@ -51,3 +51,6 @@ verify_jwt = false
 
 [functions.create-plan-payment-card]
 verify_jwt = false
+
+[functions.validate-coupon]
+verify_jwt = false
