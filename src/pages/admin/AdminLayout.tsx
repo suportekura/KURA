@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
-import { LayoutDashboard, Shield, Users, CreditCard, ScrollText, Search, ArrowLeft, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Shield, Users, CreditCard, ScrollText, Search, ArrowLeft, Menu, X, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,7 @@ const navItems = [
   { icon: Shield, label: 'Moderação', href: '/admin/moderation' },
   { icon: Users, label: 'Usuários', href: '/admin/users' },
   { icon: CreditCard, label: 'Assinaturas', href: '/admin/subscriptions' },
+  { icon: Tag, label: 'Cupons', href: '/admin/coupons' },
   { icon: ScrollText, label: 'Logs', href: '/admin/logs' },
 ];
 
