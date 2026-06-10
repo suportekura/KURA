@@ -22,8 +22,9 @@ html {
     --popover: 75 35% 96%;
     --popover-foreground: 82 29% 11%;
 
-    /* Verde Lima - Brand Primary #8bae46 (mesmo destaque do dark mode) */
-    --primary: 80 43% 48%;
+    /* Verde Lima - Brand Primary #8bae46, levemente escurecido para
+       legibilidade de texto sobre o fundo creme */
+    --primary: 80 45% 40%;
     --primary-foreground: 82 29% 11%;
 
     /* Âmbar - Brand Secondary #f4be63 */
@@ -44,7 +45,7 @@ html {
 
     --border: 75 22% 86%;
     --input: 75 22% 88%;
-    --ring: 80 43% 48%;
+    --ring: 80 45% 40%;
 
     --radius: 1rem;
 
@@ -67,12 +68,12 @@ html {
     /* Sidebar */
     --sidebar-background: 75 35% 95%;
     --sidebar-foreground: 82 29% 11%;
-    --sidebar-primary: 80 43% 48%;
+    --sidebar-primary: 80 45% 40%;
     --sidebar-primary-foreground: 82 29% 11%;
     --sidebar-accent: 80 43% 48%;
     --sidebar-accent-foreground: 82 29% 11%;
     --sidebar-border: 75 22% 86%;
-    --sidebar-ring: 80 43% 48%;
+    --sidebar-ring: 80 45% 40%;
   }
 
   .dark {

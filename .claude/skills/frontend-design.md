@@ -21,7 +21,7 @@ Kura é um marketplace mobile-first de roupas de segunda mão para o Brasil. Pú
 | `bg-card` | `--card` | Fundo de cards (75 30% 93%) |
 | `text-foreground` | `--foreground` | Texto principal (verde quase preto #1e2414) |
 | `text-muted-foreground` | `--muted-foreground` | Texto secundário, labels, placeholders |
-| `bg-primary` / `text-primary` | `--primary` | Verde lima #8bae46 nos dois modos — ações principais (foreground escuro #1e2414) |
+| `bg-primary` / `text-primary` | `--primary` | Verde lima da marca — ações principais. Light: 80 45% 40% (escurecido p/ legibilidade); dark: #8bae46 puro. Foreground escuro #1e2414 |
 | `bg-secondary` | `--secondary` | Âmbar da marca #f4be63 |
 | `bg-accent` | `--accent` | Verde lima #8bae46 (light) / oliva escuro #3b4735 (dark) — destaques, hovers |
 | `bg-muted` | `--muted` | Fundos sutis, separadores |
