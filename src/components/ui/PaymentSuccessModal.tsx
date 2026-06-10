@@ -64,25 +64,26 @@ export function PaymentSuccessModal({
                     {/* Background circle */}
                     <circle cx="44" cy="44" r="44" className="fill-green-50 dark:fill-green-950/40" />
 
-                    {/* Animated circle border */}
-                    <motion.circle
-                      cx="44"
-                      cy="44"
-                      r="36"
-                      stroke="currentColor"
-                      strokeWidth="3.5"
-                      fill="none"
-                      strokeLinecap="round"
-                      className="text-green-500"
-                      initial={{ pathLength: 0, rotate: -90 }}
-                      animate={{ pathLength: 1, rotate: -90 }}
-                      style={{ originX: '44px', originY: '44px', rotate: -90 }}
-                      transition={{ duration: 0.5, ease: 'easeOut', delay: 0.2 }}
-                    />
+                    {/* Animated circle border — rotated via SVG transform so drawing starts at 12 o'clock */}
+                    <g transform="rotate(-90 44 44)">
+                      <motion.circle
+                        cx="44"
+                        cy="44"
+                        r="36"
+                        stroke="currentColor"
+                        strokeWidth="3.5"
+                        fill="none"
+                        strokeLinecap="round"
+                        className="text-green-500"
+                        initial={{ pathLength: 0 }}
+                        animate={{ pathLength: 1 }}
+                        transition={{ duration: 0.5, ease: 'easeOut', delay: 0.2 }}
+                      />
+                    </g>
 
                     {/* Animated checkmark */}
                     <motion.path
-                      d="M28 44 L39 55 L60 33"
+                      d="M26 44 L38 56 L62 30"
                       stroke="currentColor"
                       strokeWidth="4"
                       strokeLinecap="round"

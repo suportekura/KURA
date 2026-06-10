@@ -506,32 +506,18 @@ export default function Boosts() {
                       )}
                     </>
                   ) : (
-                    <>
-                      <Button
-                        className="w-full rounded-xl"
-                        variant={option.highlighted ? 'default' : 'outline'}
-                        disabled={isBuying}
-                        onClick={() => handleActivateBoost(option, 'pix')}
-                      >
-                        {isBuying ? (
-                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Gerando PIX...</>
-                        ) : (
-                          <>Comprar no Pix</>
-                        )}
-                      </Button>
-                      <Button
-                        className="w-full rounded-xl"
-                        variant="outline"
-                        disabled={activatingBoost === option.boostType}
-                        onClick={() => handleActivateBoost(option, 'credit_card')}
-                      >
-                        {activatingBoost === option.boostType ? (
-                          <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processando...</>
-                        ) : (
-                          <>Comprar no Cartão de Crédito</>
-                        )}
-                      </Button>
-                    </>
+                    <Button
+                      className="w-full rounded-xl"
+                      variant={option.highlighted ? 'default' : 'outline'}
+                      disabled={isBuying}
+                      onClick={() => handleActivateBoost(option)}
+                    >
+                      {isBuying ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Carregando...</>
+                      ) : (
+                        <>Comprar</>
+                      )}
+                    </Button>
                   )}
                 </div>
               </div>
