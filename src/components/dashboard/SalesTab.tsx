@@ -31,19 +31,19 @@ export function SalesTab({ salesMetrics, salesChartData, hasSubscription, premiu
             <AreaChart data={salesChartData} margin={{ top: 8, right: 4, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="salesGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(96 20% 29%)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(96 20% 29%)" stopOpacity={0} />
+                  <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(45 20% 88%)" vertical={false} />
-              <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'hsl(40 20% 35%)' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: 'hsl(40 20% 35%)' }} axisLine={false} tickLine={false} tickFormatter={formatShortCurrency} />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={formatShortCurrency} />
               <Tooltip
-                contentStyle={{ borderRadius: '12px', border: '1px solid hsl(45 20% 88%)', fontSize: '12px', background: 'hsl(45 30% 97%)' }}
+                contentStyle={{ borderRadius: '12px', border: '1px solid hsl(var(--border))', fontSize: '12px', background: 'hsl(var(--popover))' }}
                 formatter={(value: number) => [formatCurrency(value), 'Receita']}
                 labelStyle={{ fontWeight: 600, marginBottom: 4 }}
               />
-              <Area type="monotone" dataKey="revenue" stroke="hsl(96 20% 29%)" strokeWidth={2} fill="url(#salesGradient)" />
+              <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#salesGradient)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>

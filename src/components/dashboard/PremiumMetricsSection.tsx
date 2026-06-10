@@ -101,11 +101,11 @@ export function PremiumMetricsSection({ metrics, period }: PremiumMetricsSection
                   <stop offset="95%" stopColor="hsl(var(--secondary))" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(45 20% 88%)" vertical={false} />
-              <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'hsl(40 20% 35%)' }} axisLine={false} tickLine={false} interval={chartInterval} />
-              <YAxis tick={{ fontSize: 10, fill: 'hsl(40 20% 35%)' }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <XAxis dataKey="date" tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} interval={chartInterval} />
+              <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip
-                contentStyle={{ borderRadius: '12px', border: '1px solid hsl(45 20% 88%)', fontSize: '12px', background: 'hsl(45 30% 97%)' }}
+                contentStyle={{ borderRadius: '12px', border: '1px solid hsl(var(--border))', fontSize: '12px', background: 'hsl(var(--popover))' }}
                 labelStyle={{ fontWeight: 600, marginBottom: 4 }}
               />
               <Area type="monotone" dataKey="productViews" name="Anúncios" stroke="hsl(var(--primary))" strokeWidth={2} fill="url(#prodViewsGrad)" />
