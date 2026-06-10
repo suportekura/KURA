@@ -63,6 +63,7 @@ const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
 const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
 const AdminLogs = lazy(() => import("./pages/admin/AdminLogs"));
 const AdminSubscriptions = lazy(() => import("./pages/admin/AdminSubscriptions"));
+const AdminCoupons = lazy(() => import("./pages/admin/AdminCoupons"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -265,6 +266,7 @@ const App = () => {
                       <Route path="moderation" element={<ModerationQueue />} />
                       <Route path="users" element={<AdminUsers />} />
                       <Route path="subscriptions" element={<AdminSubscriptions />} />
+                      <Route path="coupons" element={<AdminCoupons />} />
                       <Route path="logs" element={<AdminLogs />} />
                     </Route>
 

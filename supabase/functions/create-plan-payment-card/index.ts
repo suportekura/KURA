@@ -2,6 +2,14 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
+function couponAppliesToProduct(couponAppliesTo: string, productKey: string): boolean {
+  if (couponAppliesTo === "all") return true;
+  if (couponAppliesTo === productKey) return true;
+  if (couponAppliesTo === "all_boosts" && productKey.startsWith("boost_")) return true;
+  if (couponAppliesTo === "all_plans" && productKey.startsWith("plan_")) return true;
+  return false;
+}
+
 async function decrypt(encryptedBase64: string, key: string): Promise<string> {
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
@@ -65,7 +73,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const userId = claimsData.claims.sub as string;
     const body = await req.json();
-    const { plan_type, billing_cycle, card_number, card_holder_name, card_exp_month, card_exp_year, card_cvv } = body;
+    const { plan_type, billing_cycle, coupon_id, card_number, card_holder_name, card_exp_month, card_exp_year, card_cvv } = body;
 
     if (!plan_type || !PLAN_PRICES[plan_type]) {
       return new Response(JSON.stringify({ error: "Plano inválido" }), {
@@ -83,6 +91,51 @@ const handler = async (req: Request): Promise<Response> => {
     const amount = PLAN_PRICES[plan_type][cycle];
     const amountInCents = Math.round(amount * 100);
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    let validatedCouponId: string | null = null;
+    let serverDiscount = 0;
+
+    if (coupon_id) {
+      const { data: coupon } = await supabase
+        .from("admin_coupons")
+        .select("id, discount_type, discount_value, applies_to, max_uses, expires_at, active")
+        .eq("id", coupon_id)
+        .maybeSingle();
+
+      const isValid = coupon &&
+        coupon.active &&
+        new Date(coupon.expires_at) > new Date() &&
+        couponAppliesToProduct(coupon.applies_to, `plan_${plan_type}`);
+
+      if (isValid) {
+        let usesOk = true;
+        if (coupon.max_uses !== null) {
+          const { count } = await supabase
+            .from("admin_coupon_uses")
+            .select("id", { count: "exact", head: true })
+            .eq("coupon_id", coupon.id);
+          usesOk = (count ?? 0) < coupon.max_uses;
+        }
+        const { data: existingUse } = await supabase
+          .from("admin_coupon_uses")
+          .select("id")
+          .eq("coupon_id", coupon.id)
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        if (usesOk && !existingUse) {
+          validatedCouponId = coupon.id;
+          if (coupon.discount_type === "percentage") {
+            serverDiscount = amount * (coupon.discount_value / 100);
+          } else {
+            serverDiscount = Math.min(coupon.discount_value, amount - 0.01);
+          }
+        }
+      }
+    }
+
+    const finalAmount = validatedCouponId ? Math.max(0.01, amount - serverDiscount) : amount;
+    const finalAmountInCents = Math.round(finalAmount * 100);
 
     const { data: profile } = await supabase
       .from("profiles")
@@ -119,7 +172,7 @@ const handler = async (req: Request): Promise<Response> => {
       closed: true,
       items: [{
         code: `plan_${plan_type}_${cycle}`,
-        amount: amountInCents,
+        amount: finalAmountInCents,
         description: `Plano ${planLabel} ${cycleLabel} - KuraLab`,
         quantity: 1,
       }],
@@ -222,6 +275,16 @@ const handler = async (req: Request): Promise<Response> => {
     if (insertError) {
       console.error("[create-plan-payment-card] Insert error:", insertError);
       throw insertError;
+    }
+
+    if (validatedCouponId && payment?.id) {
+      await supabase.from("admin_coupon_uses").insert({
+        coupon_id: validatedCouponId,
+        user_id: userId,
+        payment_type: "plan",
+        payment_id: payment.id,
+        discount_amount: Math.round(serverDiscount * 100) / 100,
+      });
     }
 
     // If paid, activate subscription

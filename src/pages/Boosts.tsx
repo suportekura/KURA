@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { PixPaymentModal } from '@/components/boost/PixPaymentModal';
 import { CreditCardPaymentModal } from '@/components/boost/CreditCardPaymentModal';
+import { CheckoutModal, type CouponData } from '@/components/boost/CheckoutModal';
 import {
   Accordion,
   AccordionContent,
@@ -140,7 +141,18 @@ export default function Boosts() {
     boostType: string;
     amount: number;
     quantity: number;
+    couponId?: string;
+    discountAmount?: number;
   } | null>(null);
+  const [checkoutModal, setCheckoutModal] = useState<{
+    open: boolean;
+    boostType: string;
+    amount: number;
+    quantity: number;
+  } | null>(null);
+
+  const BOOST_PRICES_SINGLE: Record<string, number> = { '24h': 5.00, '3d': 9.90, '7d': 14.90 };
+  const BOOST_PRICES_PACKAGE: Record<string, number> = { '24h': 19.90, '3d': 39.90, '7d': 59.90 };
 
   // Scroll to top on mount
   useEffect(() => {
@@ -221,36 +233,14 @@ export default function Boosts() {
 
     // If no product selected, this is a credit purchase via PIX
     if (!selectedProduct) {
-      setBuyingBoost(`${option.boostType}_${option.type}`);
-      try {
-        const { data, error } = await supabase.functions.invoke('create-boost-payment', {
-          body: { boost_type: option.boostType, quantity, amount_override: optionPrice },
-        });
-
-        if (error || !data?.success) {
-          toast({ 
-            title: 'Erro ao gerar pagamento', 
-            description: data?.error || error?.message || 'Tente novamente.', 
-            variant: 'destructive' 
-          });
-          return;
-        }
-
-        setPixModal({
-          open: true,
-          paymentId: data.paymentId,
-          qrcode: data.qrcode || '',
-          qrcodeUrl: data.qrcode_url || data.qrcode || '',
-          payload: data.payload,
-          expiration: data.expiration,
-          amount: data.amount,
-          boostType: option.boostType,
-        });
-      } catch (err: any) {
-        toast({ title: 'Erro ao gerar PIX', description: err.message, variant: 'destructive' });
-      } finally {
-        setBuyingBoost(null);
-      }
+      const quantity = option.type === 'monthly' ? 5 : 1;
+      const amount = quantity === 5 ? BOOST_PRICES_PACKAGE[option.boostType] : BOOST_PRICES_SINGLE[option.boostType];
+      setCheckoutModal({
+        open: true,
+        boostType: option.boostType,
+        amount: amount ?? optionPrice,
+        quantity,
+      });
       return;
     }
 
@@ -312,6 +302,54 @@ export default function Boosts() {
       });
     }
   }, [user]);
+
+  const handleCheckoutPix = async (finalAmount: number, coupon?: CouponData) => {
+    if (!checkoutModal) return;
+    setBuyingBoost(`${checkoutModal.boostType}_pix`);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-boost-payment', {
+        body: {
+          boost_type: checkoutModal.boostType,
+          quantity: checkoutModal.quantity,
+          amount_override: finalAmount,
+          coupon_id: coupon?.couponId ?? null,
+          discount_amount: coupon?.discountAmount ?? null,
+        },
+      });
+      if (error || !data?.success) {
+        toast({ title: 'Erro ao gerar pagamento', description: data?.error || error?.message || 'Tente novamente.', variant: 'destructive' });
+        return;
+      }
+      setCheckoutModal(null);
+      setPixModal({
+        open: true,
+        paymentId: data.paymentId,
+        qrcode: data.qrcode || '',
+        qrcodeUrl: data.qrcode_url || data.qrcode || '',
+        payload: data.payload,
+        expiration: data.expiration,
+        amount: data.amount,
+        boostType: checkoutModal.boostType,
+      });
+    } catch (err: any) {
+      toast({ title: 'Erro ao gerar PIX', description: err.message, variant: 'destructive' });
+    } finally {
+      setBuyingBoost(null);
+    }
+  };
+
+  const handleCheckoutCard = (finalAmount: number, coupon?: CouponData) => {
+    if (!checkoutModal) return;
+    setCheckoutModal(null);
+    setCardModal({
+      open: true,
+      boostType: checkoutModal.boostType,
+      amount: finalAmount,
+      quantity: checkoutModal.quantity,
+      couponId: coupon?.couponId,
+      discountAmount: coupon?.discountAmount,
+    });
+  };
 
   const currentTab = tabs.find((t) => t.id === activeTab)!;
 
@@ -619,8 +657,28 @@ export default function Boosts() {
           amount={cardModal.amount}
           label={`Boost ${cardModal.boostType === '24h' ? '24 horas' : cardModal.boostType === '3d' ? '3 dias' : '7 dias'}`}
           edgeFunctionName="create-boost-payment-card"
-          edgeFunctionBody={{ boost_type: cardModal.boostType, quantity: cardModal.quantity, amount_override: cardModal.amount }}
+          edgeFunctionBody={{
+            boost_type: cardModal.boostType,
+            quantity: cardModal.quantity,
+            amount_override: cardModal.amount,
+            coupon_id: cardModal.couponId ?? null,
+            discount_amount: cardModal.discountAmount ?? null,
+          }}
           onConfirmed={refetchCredits}
+        />
+      )}
+
+      {checkoutModal && (
+        <CheckoutModal
+          open={checkoutModal.open}
+          onOpenChange={(open) => { if (!open) setCheckoutModal(null); }}
+          title={`Boost ${checkoutModal.boostType === '24h' ? '24 horas' : checkoutModal.boostType === '3d' ? '3 dias' : '7 dias'}`}
+          description={checkoutModal.quantity === 5 ? 'Pacote com 5 boosts' : undefined}
+          appliesTo={`boost_${checkoutModal.boostType}`}
+          originalAmount={checkoutModal.amount}
+          loading={!!buyingBoost}
+          onPayPix={handleCheckoutPix}
+          onPayCard={handleCheckoutCard}
         />
       )}
     </div>

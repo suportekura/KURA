@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { PixPaymentModal } from '@/components/boost/PixPaymentModal';
 import { CreditCardPaymentModal } from '@/components/boost/CreditCardPaymentModal';
+import { CheckoutModal, type CouponData } from '@/components/boost/CheckoutModal';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -105,11 +106,20 @@ export default function Plans() {
     billingCycle: string;
   } | null>(null);
 
+  const [checkoutModal, setCheckoutModal] = useState<{
+    open: boolean;
+    planId: string;
+    amount: number;
+    billing: BillingCycle;
+  } | null>(null);
+
   const [cardModal, setCardModal] = useState<{
     open: boolean;
     planType: string;
     billingCycle: string;
     amount: number;
+    couponId?: string;
+    discountAmount?: number;
   } | null>(null);
 
   // Fetch current subscription
@@ -203,43 +213,34 @@ export default function Plans() {
     return [];
   };
 
-  const handleBuyPlan = async (planId: string, paymentMethod: 'pix' | 'credit_card') => {
+  const handleBuyPlan = (planId: string, _paymentMethod?: string) => {
     if (!user) {
       toast({ title: 'Faça login para continuar', variant: 'destructive' });
       navigate('/auth');
       return;
     }
+    const amount = pricing[planId]?.[billing] ?? 0;
+    setCheckoutModal({ open: true, planId, amount, billing });
+  };
 
-    const amount = billing === 'annual' ? pricing[planId].annual : pricing[planId].monthly;
-    const planLabel = planId === 'plus' ? 'Vendedor Plus' : 'Loja Oficial';
-    const cycleLabel = billing === 'annual' ? 'Anual' : 'Mensal';
-
-    if (paymentMethod === 'credit_card') {
-      setCardModal({
-        open: true,
-        planType: planId,
-        billingCycle: billing,
-        amount,
-      });
-      return;
-    }
-
-    // PIX flow
-    setBuyingPlan(planId);
+  const handleCheckoutPix = async (finalAmount: number, coupon?: CouponData) => {
+    if (!checkoutModal) return;
+    setBuyingPlan(checkoutModal.planId);
     try {
       const { data, error } = await supabase.functions.invoke('create-plan-payment', {
-        body: { plan_type: planId, billing_cycle: billing },
+        body: {
+          plan_type: checkoutModal.planId,
+          billing_cycle: checkoutModal.billing,
+          amount_override: finalAmount,
+          coupon_id: coupon?.couponId ?? null,
+          discount_amount: coupon?.discountAmount ?? null,
+        },
       });
-
       if (error || !data?.success) {
-        toast({
-          title: 'Erro ao gerar pagamento',
-          description: data?.error || error?.message || 'Tente novamente.',
-          variant: 'destructive',
-        });
+        toast({ title: 'Erro ao gerar pagamento', description: data?.error || error?.message || 'Tente novamente.', variant: 'destructive' });
         return;
       }
-
+      setCheckoutModal(null);
       setPixModal({
         open: true,
         paymentId: data.paymentId,
@@ -247,14 +248,27 @@ export default function Plans() {
         payload: data.payload,
         expiration: data.expiration,
         amount: data.amount,
-        planType: planId,
-        billingCycle: billing,
+        planType: checkoutModal.planId,
+        billingCycle: checkoutModal.billing,
       });
     } catch (err: any) {
       toast({ title: 'Erro ao gerar PIX', description: err.message, variant: 'destructive' });
     } finally {
       setBuyingPlan(null);
     }
+  };
+
+  const handleCheckoutCard = (finalAmount: number, coupon?: CouponData) => {
+    if (!checkoutModal) return;
+    setCheckoutModal(null);
+    setCardModal({
+      open: true,
+      planType: checkoutModal.planId,
+      billingCycle: checkoutModal.billing,
+      amount: finalAmount,
+      couponId: coupon?.couponId,
+      discountAmount: coupon?.discountAmount,
+    });
   };
 
   const refetchSubscription = async () => {
@@ -421,27 +435,18 @@ export default function Plans() {
                     )}
                   </Button>
                 ) : (
-                  <div className="space-y-2">
-                    <Button
-                      className="w-full rounded-xl"
-                      variant={plan.highlighted ? 'default' : 'outline'}
-                      disabled={isBuying}
-                      onClick={() => handleBuyPlan(plan.id, 'pix')}
-                    >
-                      {isBuying ? (
-                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Gerando PIX...</>
-                      ) : (
-                        'Pagar com PIX'
-                      )}
-                    </Button>
-                    <Button
-                      className="w-full rounded-xl"
-                      variant="outline"
-                      onClick={() => handleBuyPlan(plan.id, 'credit_card')}
-                    >
-                      Pagar com Cartão
-                    </Button>
-                  </div>
+                  <Button
+                    className="w-full rounded-xl"
+                    variant={plan.highlighted ? 'default' : 'outline'}
+                    disabled={isBuying}
+                    onClick={() => handleBuyPlan(plan.id)}
+                  >
+                    {isBuying ? (
+                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processando...</>
+                    ) : (
+                      'Assinar Plano'
+                    )}
+                  </Button>
                 )}
               </div>
             );
@@ -565,6 +570,21 @@ export default function Plans() {
         />
       )}
 
+      {/* Checkout Modal (method + coupon selection) */}
+      {checkoutModal && (
+        <CheckoutModal
+          open={checkoutModal.open}
+          onOpenChange={(open) => { if (!open) setCheckoutModal(null); }}
+          title={`Plano ${checkoutModal.planId === 'plus' ? 'Vendedor Plus' : 'Loja Oficial'}`}
+          description={checkoutModal.billing === 'annual' ? 'Cobrança anual' : 'Cobrança mensal'}
+          appliesTo={`plan_${checkoutModal.planId}`}
+          originalAmount={checkoutModal.amount}
+          loading={!!buyingPlan}
+          onPayPix={handleCheckoutPix}
+          onPayCard={handleCheckoutCard}
+        />
+      )}
+
       {/* Credit Card Payment Modal */}
       {cardModal && (
         <CreditCardPaymentModal
@@ -573,7 +593,13 @@ export default function Plans() {
           amount={cardModal.amount}
           label={`Plano ${cardModal.planType === 'plus' ? 'Vendedor Plus' : 'Loja Oficial'} ${cardModal.billingCycle === 'annual' ? 'Anual' : 'Mensal'}`}
           edgeFunctionName="create-plan-payment-card"
-          edgeFunctionBody={{ plan_type: cardModal.planType, billing_cycle: cardModal.billingCycle }}
+          edgeFunctionBody={{
+            plan_type: cardModal.planType,
+            billing_cycle: cardModal.billingCycle,
+            amount_override: cardModal.amount,
+            coupon_id: cardModal.couponId ?? null,
+            discount_amount: cardModal.discountAmount ?? null,
+          }}
           onConfirmed={refetchSubscription}
         />
       )}

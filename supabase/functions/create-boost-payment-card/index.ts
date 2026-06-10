@@ -16,6 +16,14 @@ async function decrypt(encryptedBase64: string, key: string): Promise<string> {
   return decoder.decode(decrypted);
 }
 
+function couponAppliesToProduct(couponAppliesTo: string, productKey: string): boolean {
+  if (couponAppliesTo === "all") return true;
+  if (couponAppliesTo === productKey) return true;
+  if (couponAppliesTo === "all_boosts" && productKey.startsWith("boost_")) return true;
+  if (couponAppliesTo === "all_plans" && productKey.startsWith("plan_")) return true;
+  return false;
+}
+
 const BOOST_PRICES_SINGLE: Record<string, number> = {
   "24h": 5.00,
   "3d": 9.90,
@@ -82,7 +90,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Parse body
     const body = await req.json();
-    const { boost_type, quantity: reqQuantity, card_number, card_holder_name, card_exp_month, card_exp_year, card_cvv } = body;
+    const { boost_type, quantity: reqQuantity, card_number, card_holder_name, card_exp_month, card_exp_year, card_cvv, coupon_id, discount_amount: clientDiscount } = body;
 
     if (!boost_type || !BOOST_PRICES_SINGLE[boost_type]) {
       return new Response(
@@ -103,6 +111,51 @@ const handler = async (req: Request): Promise<Response> => {
     const amount = quantity === 5 ? BOOST_PRICES_PACKAGE[boost_type] : BOOST_PRICES_SINGLE[boost_type];
     const amountInCents = Math.round(amount * 100);
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    let validatedCouponId: string | null = null;
+    let serverDiscount = 0;
+
+    if (coupon_id) {
+      const { data: coupon } = await supabase
+        .from("admin_coupons")
+        .select("id, discount_type, discount_value, applies_to, max_uses, expires_at, active")
+        .eq("id", coupon_id)
+        .maybeSingle();
+
+      const isValid = coupon &&
+        coupon.active &&
+        new Date(coupon.expires_at) > new Date() &&
+        couponAppliesToProduct(coupon.applies_to, `boost_${boost_type}`);
+
+      if (isValid) {
+        let usesOk = true;
+        if (coupon.max_uses !== null) {
+          const { count } = await supabase
+            .from("admin_coupon_uses")
+            .select("id", { count: "exact", head: true })
+            .eq("coupon_id", coupon.id);
+          usesOk = (count ?? 0) < coupon.max_uses;
+        }
+        const { data: existingUse } = await supabase
+          .from("admin_coupon_uses")
+          .select("id")
+          .eq("coupon_id", coupon.id)
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        if (usesOk && !existingUse) {
+          validatedCouponId = coupon.id;
+          if (coupon.discount_type === "percentage") {
+            serverDiscount = amount * (coupon.discount_value / 100);
+          } else {
+            serverDiscount = Math.min(coupon.discount_value, amount - 0.01);
+          }
+        }
+      }
+    }
+
+    const finalAmount = validatedCouponId ? Math.max(0.01, amount - serverDiscount) : amount;
+    const finalAmountInCents = Math.round(finalAmount * 100);
 
     // Get user profile for customer data
     const { data: profile } = await supabase
@@ -149,7 +202,7 @@ const handler = async (req: Request): Promise<Response> => {
       items: [
         {
           code: quantity === 5 ? `boost_package_${boost_type}` : `boost_${boost_type}`,
-          amount: amountInCents,
+          amount: finalAmountInCents,
           description: `Boost ${boostLabel} - KuraLab`,
           quantity: 1,
         },
@@ -283,6 +336,16 @@ const handler = async (req: Request): Promise<Response> => {
       throw insertError;
     }
 
+    if (validatedCouponId && payment?.id) {
+      await supabase.from("admin_coupon_uses").insert({
+        coupon_id: validatedCouponId,
+        user_id: userId,
+        payment_type: "boost",
+        payment_id: payment.id,
+        discount_amount: Math.round(serverDiscount * 100) / 100,
+      });
+    }
+
     // If payment confirmed, credit the boosts
     if (isPaid) {
       // Upsert user_boosts
@@ -362,6 +425,7 @@ const handler = async (req: Request): Promise<Response> => {
         paymentId: payment.id,
         orderId: orderData.id,
         status: "confirmed",
+        amount: finalAmount,
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
