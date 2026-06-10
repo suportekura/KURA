@@ -22,9 +22,9 @@ html {
     --popover: 75 35% 96%;
     --popover-foreground: 82 29% 11%;
 
-    /* Verde Oliva Escuro - Brand Primary #3b4735 */
-    --primary: 100 15% 24%;
-    --primary-foreground: 75 35% 95%;
+    /* Verde Lima - Brand Primary #8bae46 (mesmo destaque do dark mode) */
+    --primary: 80 43% 48%;
+    --primary-foreground: 82 29% 11%;
 
     /* Âmbar - Brand Secondary #f4be63 */
     --secondary: 38 87% 67%;
@@ -67,8 +67,8 @@ html {
     /* Sidebar */
     --sidebar-background: 75 35% 95%;
     --sidebar-foreground: 82 29% 11%;
-    --sidebar-primary: 100 15% 24%;
-    --sidebar-primary-foreground: 75 35% 95%;
+    --sidebar-primary: 80 43% 48%;
+    --sidebar-primary-foreground: 82 29% 11%;
     --sidebar-accent: 80 43% 48%;
     --sidebar-accent-foreground: 82 29% 11%;
     --sidebar-border: 75 22% 86%;
