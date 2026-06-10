@@ -79,7 +79,7 @@ export function SplashScreen({ onComplete, persistent = false }: SplashScreenPro
     <motion.div
       className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden"
       style={{
-        background: '#1B1F14',
+        background: '#1e2414',
       }}
       animate={isMorphing ? { opacity: 0 } : { opacity: 1 }}
       transition={isMorphing ? { duration: 0.8, delay: 0.1, ease: [0.45, 0, 0.55, 1] } : {}}

@@ -103,11 +103,11 @@ export function CategorySalesCard({
       <div className="h-40">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} layout="vertical" margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(45 20% 88%)" horizontal={false} />
-            <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(40 20% 35%)' }} axisLine={false} tickLine={false} allowDecimals={false} />
-            <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fill: 'hsl(40 20% 35%)' }} axisLine={false} tickLine={false} width={75} />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+            <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} allowDecimals={false} />
+            <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} width={75} />
             <Tooltip
-              contentStyle={{ borderRadius: '12px', border: '1px solid hsl(45 20% 88%)', fontSize: '12px', background: 'hsl(45 30% 97%)' }}
+              contentStyle={{ borderRadius: '12px', border: '1px solid hsl(var(--border))', fontSize: '12px', background: 'hsl(var(--popover))' }}
               formatter={(value: number) => [value, 'Vendas']}
             />
             <Bar dataKey="count" fill={color} radius={[0, 4, 4, 0]} name="Vendas" />

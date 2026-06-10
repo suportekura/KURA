@@ -11,102 +11,112 @@ html {
 
 @layer base {
   :root {
-    /* Light Mode - Pastel Natural Premium */
-    --background: 45 30% 97%;
-    --foreground: 40 15% 20%;
+    /* Light Mode - Paleta oficial da marca Kura (brandbook) */
+    /* Brand Primary: #1e2414 · #3b4735 · #8bae46 · cream */
+    --background: 75 35% 95%;
+    --foreground: 82 29% 11%;
 
-    --card: 45 25% 95%;
-    --card-foreground: 40 15% 20%;
+    --card: 75 30% 93%;
+    --card-foreground: 82 29% 11%;
 
-    --popover: 45 30% 97%;
-    --popover-foreground: 40 15% 20%;
+    --popover: 75 35% 96%;
+    --popover-foreground: 82 29% 11%;
 
-    /* Verde Musgo Pastel - Primary */
-    --primary: 96 20% 29%;
-    --primary-foreground: 45 30% 97%;
+    /* Verde Lima - Brand Primary #8bae46, levemente escurecido para
+       legibilidade de texto sobre o fundo creme */
+    --primary: 80 45% 40%;
+    --primary-foreground: 75 35% 95%;
 
-    /* Marrom Oliva Pastel - Secondary */
-    --secondary: 50 40% 40%;
-    --secondary-foreground: 45 30% 97%;
+    /* Âmbar - Brand Secondary #f4be63 */
+    --secondary: 38 87% 67%;
+    --secondary-foreground: 82 29% 11%;
 
-    /* Verde Claro Pastel - Muted */
-    --muted: 60 25% 50%;
-    --muted-foreground: 40 20% 35%;
+    /* Verde Atenuado - Muted */
+    --muted: 80 18% 50%;
+    --muted-foreground: 95 12% 32%;
 
-    /* Amarelo Esverdeado Pastel - Accent */
-    --accent: 60 30% 55%;
-    --accent-foreground: 40 15% 20%;
+    /* Verde Lima - Brand Primary #8bae46 */
+    --accent: 80 43% 48%;
+    --accent-foreground: 82 29% 11%;
 
-    --destructive: 0 60% 50%;
-    --destructive-foreground: 45 30% 97%;
+    /* Coral - Brand Secondary #f45745 */
+    --destructive: 6 89% 61%;
+    --destructive-foreground: 75 35% 97%;
 
-    --border: 45 20% 88%;
-    --input: 45 20% 90%;
-    --ring: 96 20% 29%;
+    --border: 75 22% 86%;
+    --input: 75 22% 88%;
+    --ring: 80 45% 40%;
 
     --radius: 1rem;
 
     /* Custom tokens */
-    --olive-warm: 45 25% 92%;
-    --olive-muted: 50 20% 85%;
-    --success: 100 26% 34%;
-    --success-foreground: 45 30% 97%;
+    --olive-warm: 75 28% 91%;
+    --olive-muted: 78 20% 84%;
+    --success: 90 35% 32%;
+    --success-foreground: 75 35% 95%;
+
+    /* Brand Secondary Colors (constantes, iguais nos dois modos) */
+    --brand-amber: 38 87% 67%;
+    --brand-pink: 340 82% 71%;
+    --brand-coral: 6 89% 61%;
 
     /* Shadows */
-    --shadow-soft: 0 2px 20px -4px hsl(40 15% 20% / 0.08);
-    --shadow-card: 0 4px 24px -8px hsl(40 15% 20% / 0.1);
-    --shadow-elevated: 0 8px 40px -12px hsl(40 15% 20% / 0.15);
+    --shadow-soft: 0 2px 20px -4px hsl(82 29% 11% / 0.08);
+    --shadow-card: 0 4px 24px -8px hsl(82 29% 11% / 0.1);
+    --shadow-elevated: 0 8px 40px -12px hsl(82 29% 11% / 0.15);
 
     /* Sidebar */
-    --sidebar-background: 45 30% 97%;
-    --sidebar-foreground: 40 15% 20%;
-    --sidebar-primary: 96 20% 29%;
-    --sidebar-primary-foreground: 45 30% 97%;
-    --sidebar-accent: 60 25% 50%;
-    --sidebar-accent-foreground: 40 15% 20%;
-    --sidebar-border: 45 20% 88%;
-    --sidebar-ring: 96 20% 29%;
+    --sidebar-background: 75 35% 95%;
+    --sidebar-foreground: 82 29% 11%;
+    --sidebar-primary: 80 45% 40%;
+    --sidebar-primary-foreground: 75 35% 95%;
+    --sidebar-accent: 80 43% 48%;
+    --sidebar-accent-foreground: 82 29% 11%;
+    --sidebar-border: 75 22% 86%;
+    --sidebar-ring: 80 45% 40%;
   }
 
   .dark {
-    /* Dark Mode - Luxury Premium */
-    --background: 80 20% 10%;
-    --foreground: 45 20% 92%;
+    /* Dark Mode - Paleta oficial da marca Kura (brandbook) */
+    /* Fundo = Brand Primary #1e2414 · Primary = Brand Primary #8bae46 */
+    --background: 82 29% 11%;
+    --foreground: 75 30% 92%;
 
-    --card: 80 18% 14%;
-    --card-foreground: 45 20% 92%;
+    --card: 95 18% 15%;
+    --card-foreground: 75 30% 92%;
 
-    --popover: 80 18% 12%;
-    --popover-foreground: 45 20% 92%;
+    --popover: 92 20% 13%;
+    --popover-foreground: 75 30% 92%;
 
-    /* Verde Musgo Deep — olive da marca (igual à caixa da logo) */
-    --primary: 98 17% 28%;
-    --primary-foreground: 45 30% 95%;
+    /* Verde Lima - Brand Primary #8bae46 */
+    --primary: 80 43% 48%;
+    --primary-foreground: 82 29% 11%;
 
-    /* Marrom Oliva Deep */
-    --secondary: 50 30% 35%;
-    --secondary-foreground: 45 20% 92%;
+    /* Âmbar Deep - Brand Secondary #f4be63 */
+    --secondary: 38 75% 62%;
+    --secondary-foreground: 82 29% 11%;
 
     /* Muted Deep */
-    --muted: 60 15% 25%;
-    --muted-foreground: 45 15% 65%;
+    --muted: 88 16% 22%;
+    --muted-foreground: 78 18% 68%;
 
-    /* Accent Deep */
-    --accent: 60 25% 40%;
-    --accent-foreground: 45 20% 92%;
+    /* Verde Oliva Escuro - Brand Primary #3b4735 */
+    --accent: 100 15% 24%;
+    --accent-foreground: 75 30% 92%;
 
-    --destructive: 0 50% 40%;
-    --destructive-foreground: 45 20% 92%;
+    /* Coral Deep - Brand Secondary #f45745 */
+    --destructive: 6 75% 55%;
+    --destructive-foreground: 75 35% 95%;
 
-    --border: 80 15% 20%;
-    --input: 80 15% 18%;
-    --ring: 96 30% 50%;
+    --border: 88 16% 20%;
+    --input: 88 15% 18%;
+    --ring: 80 43% 48%;
 
     /* Custom tokens dark */
-    --olive-warm: 80 15% 16%;
-    --olive-muted: 80 12% 22%;
-    --success: 100 30% 46%;
-    --success-foreground: 80 20% 10%;
+    --olive-warm: 88 16% 16%;
+    --olive-muted: 88 13% 22%;
+    --success: 90 40% 45%;
+    --success-foreground: 82 29% 11%;
 
     /* Shadows dark */
     --shadow-soft: 0 2px 20px -4px hsl(0 0% 0% / 0.3);
@@ -114,14 +124,14 @@ html {
     --shadow-elevated: 0 8px 40px -12px hsl(0 0% 0% / 0.5);
 
     /* Sidebar dark */
-    --sidebar-background: 80 20% 10%;
-    --sidebar-foreground: 45 20% 92%;
-    --sidebar-primary: 98 17% 28%;
-    --sidebar-primary-foreground: 45 30% 95%;
-    --sidebar-accent: 60 25% 40%;
-    --sidebar-accent-foreground: 45 20% 92%;
-    --sidebar-border: 80 15% 20%;
-    --sidebar-ring: 96 30% 50%;
+    --sidebar-background: 82 29% 11%;
+    --sidebar-foreground: 75 30% 92%;
+    --sidebar-primary: 80 43% 48%;
+    --sidebar-primary-foreground: 82 29% 11%;
+    --sidebar-accent: 100 15% 24%;
+    --sidebar-accent-foreground: 75 30% 92%;
+    --sidebar-border: 88 16% 20%;
+    --sidebar-ring: 80 43% 48%;
   }
 }
 

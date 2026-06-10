@@ -17,17 +17,19 @@ Kura é um marketplace mobile-first de roupas de segunda mão para o Brasil. Pú
 
 | Token Tailwind | CSS Var | Uso |
 |---|---|---|
-| `bg-background` | `--background` | Fundo de tela (cream 45 30% 97%) |
-| `bg-card` | `--card` | Fundo de cards (45 25% 95%) |
-| `text-foreground` | `--foreground` | Texto principal (marrom escuro) |
+| `bg-background` | `--background` | Fundo de tela (creme da marca, 75 35% 95%) |
+| `bg-card` | `--card` | Fundo de cards (75 30% 93%) |
+| `text-foreground` | `--foreground` | Texto principal (verde quase preto #1e2414) |
 | `text-muted-foreground` | `--muted-foreground` | Texto secundário, labels, placeholders |
-| `bg-primary` / `text-primary` | `--primary` | Verde musgo (80 60% 35%) — ações principais |
-| `bg-secondary` | `--secondary` | Marrom oliva (50 40% 40%) |
+| `bg-primary` / `text-primary` | `--primary` | Verde lima da marca — ações principais. Light: 80 45% 40% (escurecido p/ legibilidade) com foreground creme; dark: #8bae46 puro com foreground escuro #1e2414 |
+| `bg-secondary` | `--secondary` | Âmbar da marca #f4be63 |
+| `bg-accent` | `--accent` | Verde lima #8bae46 (light) / oliva escuro #3b4735 (dark) — destaques, hovers |
 | `bg-muted` | `--muted` | Fundos sutis, separadores |
-| `bg-olive-warm` | `--olive-warm` | Fundo de inputs e ícones (45 25% 92%) |
-| `bg-destructive` | `--destructive` | Vermelho — excluir, cancelar |
+| `bg-olive-warm` | `--olive-warm` | Fundo de inputs e ícones (75 28% 91%) |
+| `bg-destructive` | `--destructive` | Coral da marca #f45745 — excluir, cancelar |
 | `bg-success` | `--success` | Verde — confirmações, status ativo |
-| `border-border` | `--border` | Bordas padrão (45 20% 88%) |
+| `border-border` | `--border` | Bordas padrão (75 22% 86%) |
+| `bg-brand-amber` / `bg-brand-pink` / `bg-brand-coral` | `--brand-*` | Brand Secondary Colors (#f4be63, #f278a1, #f45745) — constantes nos dois modos |
 
 **Regra:** Nunca use cores hardcoded (hex/rgb). Use sempre os tokens semânticos acima.
 

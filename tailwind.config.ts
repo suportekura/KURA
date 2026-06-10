@@ -59,6 +59,11 @@ export default {
           warm: "hsl(var(--olive-warm))",
           muted: "hsl(var(--olive-muted))",
         },
+        brand: {
+          amber: "hsl(var(--brand-amber))",
+          pink: "hsl(var(--brand-pink))",
+          coral: "hsl(var(--brand-coral))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
