@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
-import { CreditCard, Loader2, Lock, AlertCircle, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { CreditCard, Loader2, Lock, AlertCircle, AlertTriangle } from 'lucide-react';
+import { PaymentSuccessModal } from '@/components/ui/PaymentSuccessModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -97,7 +98,6 @@ export function CreditCardPaymentModal({
         return;
       }
 
-      toast({ title: 'Pagamento confirmado! 🎉', description: `${label} ativado com sucesso.` });
       onConfirmed();
       setSuccess(true);
       setCardNumber(''); setHolderName(''); setExpiry(''); setCvv('');
@@ -108,8 +108,20 @@ export function CreditCardPaymentModal({
     }
   }, [isValid, isProcessing, cardNumber, holderName, expiry, cvv, edgeFunctionName, edgeFunctionBody, label, onConfirmed, toast]);
 
+  const handleContinue = () => {
+    setSuccess(false);
+    onOpenChange(false);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (!isProcessing) onOpenChange(v); }}>
+    <>
+    <PaymentSuccessModal
+      open={success}
+      title="Pagamento confirmado!"
+      description={`${label} ativado com sucesso.`}
+      onContinue={handleContinue}
+    />
+    <Dialog open={open && !success} onOpenChange={(v) => { if (!isProcessing) onOpenChange(v); }}>
       <DialogContent className="!left-auto !right-auto !translate-x-0 inset-x-4 sm:!left-[50%] sm:!translate-x-[-50%] sm:inset-x-auto sm:max-w-md rounded-2xl border-border/30 shadow-[0_16px_48px_-12px_hsl(var(--foreground)/0.12)] p-0 gap-0 overflow-hidden">
         {activationFailed ? (
           <div className="flex flex-col items-center justify-center px-6 py-12 text-center gap-4">
@@ -120,14 +132,6 @@ export function CreditCardPaymentModal({
               Entre em contato com o suporte informando seu e-mail e o plano contratado.
             </p>
             <p className="text-xs font-medium text-primary">suporte@kuralab.com.br</p>
-            <Button className="w-full rounded-xl" onClick={() => onOpenChange(false)}>
-              Fechar
-            </Button>
-          </div>
-        ) : success ? (
-          <div className="flex flex-col items-center justify-center px-6 py-12 text-center gap-4">
-            <CheckCircle2 className="w-16 h-16 text-green-500" />
-            <h2 className="text-lg font-semibold text-foreground">Pagamento realizado!</h2>
             <Button className="w-full rounded-xl" onClick={() => onOpenChange(false)}>
               Fechar
             </Button>
@@ -206,5 +210,6 @@ export function CreditCardPaymentModal({
         )}
       </DialogContent>
     </Dialog>
+    </>
   );
 }
