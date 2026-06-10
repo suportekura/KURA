@@ -11,6 +11,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { PaymentSuccessModal } from '@/components/ui/PaymentSuccessModal';
 
 interface PixPaymentModalProps {
   open: boolean;
@@ -21,10 +22,9 @@ interface PixPaymentModalProps {
   payload: string;
   expiration: string;
   amount: number;
-  label: string; // e.g. "Boost 24 horas" or "Plano Vendedor Plus Mensal"
+  label: string;
   paymentTable?: 'boost_payments' | 'plan_payments';
   onConfirmed: () => void;
-  // Legacy props
   boostType?: string;
 }
 
@@ -46,6 +46,7 @@ export function PixPaymentModal({
   const [copied, setCopied] = useState(false);
   const [timeLeft, setTimeLeft] = useState('');
   const [isExpired, setIsExpired] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const qrImageSrc = qrcodeUrl || (qrcode?.startsWith('http') ? qrcode : qrcode ? `data:image/png;base64,${qrcode}` : '');
 
@@ -75,14 +76,13 @@ export function PixPaymentModal({
         .maybeSingle();
 
       if (data?.status === 'confirmed') {
-        toast({ title: 'Pagamento confirmado! 🎉', description: `${label} ativado com sucesso.` });
         onConfirmed();
-        onOpenChange(false);
+        setShowSuccess(true);
       }
     };
     const interval = setInterval(poll, 5000);
     return () => clearInterval(interval);
-  }, [open, paymentId, isExpired, label, paymentTable, onConfirmed, onOpenChange, toast, user?.id]);
+  }, [open, paymentId, isExpired, paymentTable, onConfirmed, user?.id]);
 
   const handleCopy = useCallback(async () => {
     try {
@@ -95,61 +95,75 @@ export function PixPaymentModal({
     }
   }, [payload, toast]);
 
+  const handleContinue = () => {
+    setShowSuccess(false);
+    onOpenChange(false);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="!left-auto !right-auto !translate-x-0 inset-x-4 sm:!left-[50%] sm:!translate-x-[-50%] sm:inset-x-auto sm:max-w-md rounded-2xl border-border/30 shadow-[0_16px_48px_-12px_hsl(var(--foreground)/0.12)] p-0 gap-0 overflow-hidden">
-        <div className="px-6 pt-6 pb-3">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2.5 text-base">
-              <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
-                <QrCode className="w-4 h-4 text-primary" />
-              </div>
-              Pagamento PIX
-            </DialogTitle>
-            <DialogDescription className="text-xs mt-1">
-              {label} — R$ {amount.toFixed(2).replace('.', ',')}
-            </DialogDescription>
-          </DialogHeader>
-        </div>
-
-        <div className="px-6 flex flex-col items-center gap-4">
-          <div className="w-56 h-56 bg-white rounded-2xl p-3 shadow-sm border border-border/20">
-            {qrImageSrc ? (
-              <img src={qrImageSrc} alt="QR Code PIX" className="w-full h-full object-contain" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                <Loader2 className="w-6 h-6 animate-spin" />
-              </div>
-            )}
+    <>
+      <Dialog open={open && !showSuccess} onOpenChange={onOpenChange}>
+        <DialogContent className="!left-auto !right-auto !translate-x-0 inset-x-4 sm:!left-[50%] sm:!translate-x-[-50%] sm:inset-x-auto sm:max-w-md rounded-2xl border-border/30 shadow-[0_16px_48px_-12px_hsl(var(--foreground)/0.12)] p-0 gap-0 overflow-hidden">
+          <div className="px-6 pt-6 pb-3">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2.5 text-base">
+                <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <QrCode className="w-4 h-4 text-primary" />
+                </div>
+                Pagamento PIX
+              </DialogTitle>
+              <DialogDescription className="text-xs mt-1">
+                {label} — R$ {amount.toFixed(2).replace('.', ',')}
+              </DialogDescription>
+            </DialogHeader>
           </div>
 
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Clock className="w-3.5 h-3.5" />
-            {isExpired ? (
-              <span className="text-destructive font-medium">QR Code expirado</span>
-            ) : (
-              <span>Expira em <span className="font-mono font-medium text-foreground">{timeLeft}</span></span>
-            )}
-          </div>
-        </div>
+          <div className="px-6 flex flex-col items-center gap-4">
+            <div className="w-56 h-56 bg-white rounded-2xl p-3 shadow-sm border border-border/20">
+              {qrImageSrc ? (
+                <img src={qrImageSrc} alt="QR Code PIX" className="w-full h-full object-contain" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                </div>
+              )}
+            </div>
 
-        <div className="px-6 py-4">
-          <Button variant="outline" className="w-full rounded-xl" onClick={handleCopy} disabled={isExpired}>
-            {copied ? (
-              <><Check className="w-4 h-4 mr-2 text-primary" /> Copiado!</>
-            ) : (
-              <><Copy className="w-4 h-4 mr-2" /> Copiar código PIX</>
-            )}
-          </Button>
-        </div>
-
-        <div className="px-6 pb-6">
-          <div className="flex items-center justify-center gap-2 p-3 rounded-xl bg-muted/50">
-            <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">Aguardando pagamento...</span>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Clock className="w-3.5 h-3.5" />
+              {isExpired ? (
+                <span className="text-destructive font-medium">QR Code expirado</span>
+              ) : (
+                <span>Expira em <span className="font-mono font-medium text-foreground">{timeLeft}</span></span>
+              )}
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+
+          <div className="px-6 py-4">
+            <Button variant="outline" className="w-full rounded-xl" onClick={handleCopy} disabled={isExpired}>
+              {copied ? (
+                <><Check className="w-4 h-4 mr-2 text-primary" /> Copiado!</>
+              ) : (
+                <><Copy className="w-4 h-4 mr-2" /> Copiar código PIX</>
+              )}
+            </Button>
+          </div>
+
+          <div className="px-6 pb-6">
+            <div className="flex items-center justify-center gap-2 p-3 rounded-xl bg-muted/50">
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Aguardando pagamento...</span>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <PaymentSuccessModal
+        open={showSuccess}
+        title="Pagamento confirmado!"
+        description={`${label} ativado com sucesso.`}
+        onContinue={handleContinue}
+      />
+    </>
   );
 }
