@@ -220,18 +220,7 @@ export default function Boosts() {
     const optionPrice = parseFloat(option.price.replace('R$', '').replace(',', '.'));
     const quantity = option.type === 'monthly' ? 5 : 1;
 
-    // Credit card — open card form modal
-    if (paymentMethod === 'credit_card') {
-      setCardModal({
-        open: true,
-        boostType: option.boostType,
-        amount: optionPrice,
-        quantity,
-      });
-      return;
-    }
-
-    // If no product selected, this is a credit purchase via PIX
+    // If no product selected, open CheckoutModal (handles both PIX and card)
     if (!selectedProduct) {
       const quantity = option.type === 'monthly' ? 5 : 1;
       const amount = quantity === 5 ? BOOST_PRICES_PACKAGE[option.boostType] : BOOST_PRICES_SINGLE[option.boostType];
