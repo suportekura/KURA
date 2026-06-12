@@ -200,7 +200,7 @@ serve(async (req) => {
       }
     }
 
-    const { imageUrl } = await req.json();
+    const { imageUrl, imageBase64 } = await req.json();
 
     if (!imageUrl || typeof imageUrl !== 'string') {
       console.error('[moderate-image] Missing or invalid imageUrl');
@@ -211,12 +211,21 @@ serve(async (req) => {
           moderationCategories: {},
           error: 'URL da imagem não fornecida',
         } as ModerationResult),
-        { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         }
       );
     }
+
+    // Versão reduzida opcional enviada pelo cliente (data URI). Evita baixar a
+    // imagem original do storage e reduz o payload enviado ao Gemini.
+    // Limite de 1MB: a versão de moderação é ~100KB; acima disso usa a URL.
+    const MAX_INLINE_IMAGE_CHARS = 1_400_000; // ~1MB de dados após decode do base64
+    const hasValidInlineImage =
+      typeof imageBase64 === 'string' &&
+      /^data:image\/(jpeg|jpg|png|webp);base64,/.test(imageBase64) &&
+      imageBase64.length <= MAX_INLINE_IMAGE_CHARS;
 
     console.log('[moderate-image] Moderating image:', imageUrl.substring(0, 100) + '...');
 
@@ -238,33 +247,39 @@ serve(async (req) => {
       );
     }
 
-    // Fetch the image and convert to base64 — Gemini cannot fetch external URLs directly
+    // Use a versão reduzida enviada pelo cliente quando disponível; caso contrário,
+    // baixa a imagem e converte para base64 — Gemini cannot fetch external URLs directly
     let imageDataUri: string;
-    try {
-      const imgResponse = await fetch(imageUrl);
-      if (!imgResponse.ok) throw new Error(`Image fetch failed: ${imgResponse.status}`);
-      const mimeType = imgResponse.headers.get('content-type') || 'image/jpeg';
-      const buffer = await imgResponse.arrayBuffer();
-      const uint8 = new Uint8Array(buffer);
-      let binary = '';
-      const chunkSize = 8192;
-      for (let i = 0; i < uint8.length; i += chunkSize) {
-        binary += String.fromCharCode(...uint8.subarray(i, i + chunkSize));
+    if (hasValidInlineImage) {
+      imageDataUri = imageBase64;
+      console.log('[moderate-image] Using inline downscaled image, chars:', imageBase64.length);
+    } else {
+      try {
+        const imgResponse = await fetch(imageUrl);
+        if (!imgResponse.ok) throw new Error(`Image fetch failed: ${imgResponse.status}`);
+        const mimeType = imgResponse.headers.get('content-type') || 'image/jpeg';
+        const buffer = await imgResponse.arrayBuffer();
+        const uint8 = new Uint8Array(buffer);
+        let binary = '';
+        const chunkSize = 8192;
+        for (let i = 0; i < uint8.length; i += chunkSize) {
+          binary += String.fromCharCode(...uint8.subarray(i, i + chunkSize));
+        }
+        const base64 = btoa(binary);
+        imageDataUri = `data:${mimeType};base64,${base64}`;
+        console.log('[moderate-image] Image downloaded, size:', uint8.length, 'bytes');
+      } catch (fetchErr) {
+        console.error('[moderate-image] Failed to download image:', fetchErr);
+        return new Response(
+          JSON.stringify({
+            imageApproved: false,
+            moderationFlagged: true,
+            moderationCategories: {},
+            error: 'Não foi possível carregar a imagem para moderação',
+          } as ModerationResult),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
-      const base64 = btoa(binary);
-      imageDataUri = `data:${mimeType};base64,${base64}`;
-      console.log('[moderate-image] Image downloaded, size:', uint8.length, 'bytes');
-    } catch (fetchErr) {
-      console.error('[moderate-image] Failed to download image:', fetchErr);
-      return new Response(
-        JSON.stringify({
-          imageApproved: false,
-          moderationFlagged: true,
-          moderationCategories: {},
-          error: 'Não foi possível carregar a imagem para moderação',
-        } as ModerationResult),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
     }
 
     // Call Google AI API with retry logic

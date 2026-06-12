@@ -424,32 +424,75 @@ export default function Sell() {
     return publicUrl;
   };
 
+  // Timeout por chamada de moderação: em vez de travar o fluxo, o anúncio
+  // cai em revisão manual (pending_review) e o crédito do usuário é preservado
+  const MODERATION_TIMEOUT_MS = 30_000;
+
+  const withModerationTimeout = <T,>(promise: Promise<T>, fallback: T): Promise<T> =>
+    Promise.race([
+      promise,
+      new Promise<T>((resolve) => setTimeout(() => resolve(fallback), MODERATION_TIMEOUT_MS)),
+    ]);
+
+  // Versão reduzida da imagem só para a IA (a original em alta segue no storage).
+  // 768px é suficiente para classificar screenshot/qualidade/conteúdo e corta o
+  // payload enviado ao Gemini de ~MB para ~100KB.
+  const MODERATION_MAX_DIMENSION = 768;
+
+  const prepareImageForModeration = async (file: File): Promise<string | null> => {
+    const objectUrl = URL.createObjectURL(file);
+    try {
+      const image = new Image();
+      image.src = objectUrl;
+      await image.decode();
+
+      const largestSide = Math.max(image.naturalWidth, image.naturalHeight);
+      const scale = Math.min(1, MODERATION_MAX_DIMENSION / largestSide);
+      const width = Math.max(1, Math.round(image.naturalWidth * scale));
+      const height = Math.max(1, Math.round(image.naturalHeight * scale));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      ctx.drawImage(image, 0, 0, width, height);
+      return canvas.toDataURL('image/jpeg', 0.8);
+    } catch (err) {
+      // Sem versão reduzida a edge function baixa a original pela URL (fallback)
+      console.warn('[Sell] Failed to downscale image for moderation:', err);
+      return null;
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  };
+
   // Moderate image using Google AI
-  const moderateImage = async (imageUrl: string): Promise<ModerationResult> => {
+  const moderateImage = async (imageUrl: string, imageBase64?: string | null): Promise<ModerationResult> => {
+    // Erros de infra (rede, 5xx, rate limit) não são um veredito sobre o conteúdo:
+    // o anúncio vai para revisão manual em vez de ser bloqueado como "não aprovado"
+    const infraErrorResult: ModerationResult = {
+      imageApproved: false,
+      moderationFlagged: false,
+      moderationCategories: {},
+      needsManualReview: true,
+      moderationReason: 'Verificação automática indisponível. Revisão manual necessária.',
+    };
+
     try {
       const { data, error } = await supabase.functions.invoke('moderate-image', {
-        body: { imageUrl },
+        body: { imageUrl, imageBase64: imageBase64 ?? undefined },
       });
 
       if (error) {
         console.error('[Sell] Moderation API error:', error);
-        return {
-          imageApproved: false,
-          moderationFlagged: true,
-          moderationCategories: {},
-          error: error.message || 'Erro ao verificar imagem',
-        };
+        return infraErrorResult;
       }
 
       return data as ModerationResult;
     } catch (error) {
       console.error('[Sell] Moderation error:', error);
-      return {
-        imageApproved: false,
-        moderationFlagged: true,
-        moderationCategories: {},
-        error: 'Erro ao conectar com o serviço de moderação',
-      };
+      return infraErrorResult;
     }
   };
 
@@ -543,35 +586,28 @@ export default function Sell() {
     setModerating(true);
 
     try {
-      // Step 1: Upload only new images (those without url)
-      const uploadedUrls: string[] = [];
-      const newImageUrls: string[] = [];
-      
-      for (const img of images) {
-        if (img.url) {
-          // Already uploaded image (from edit mode)
-          uploadedUrls.push(img.url);
-          // Only moderate if not previously moderated
-          if (!img.moderated) {
-            newImageUrls.push(img.url);
+      // Step 1: Upload new images in parallel, preserving the display order
+      const uploadResults = await Promise.all(
+        images.map(async (img) => {
+          if (img.url) {
+            // Already uploaded image (edit mode / draft) — moderate only if not previously moderated
+            return { url: img.url, file: img.file ?? null, needsModeration: !img.moderated };
           }
-        } else if (img.file) {
-          // New image to upload
+          if (!img.file) return null;
+
           setImages((prev) =>
             prev.map((i) => (i.id === img.id ? { ...i, uploading: true } : i))
           );
 
           try {
             const url = await uploadImage(img);
-            if (url) {
-              uploadedUrls.push(url);
-              newImageUrls.push(url);
-              setImages((prev) =>
-                prev.map((i) =>
-                  i.id === img.id ? { ...i, uploading: false, uploaded: true, url } : i
-                )
-              );
-            }
+            if (!url) return null;
+            setImages((prev) =>
+              prev.map((i) =>
+                i.id === img.id ? { ...i, uploading: false, uploaded: true, url } : i
+              )
+            );
+            return { url, file: img.file, needsModeration: true };
           } catch (err) {
             setImages((prev) =>
               prev.map((i) =>
@@ -582,86 +618,112 @@ export default function Sell() {
             );
             throw err;
           }
-        }
-      }
+        })
+      );
+
+      const uploaded = uploadResults.filter(
+        (r): r is { url: string; file: File | null; needsModeration: boolean } => !!r
+      );
+      const uploadedUrls = uploaded.map((r) => r.url);
+      const imagesToModerate = uploaded.filter((r) => r.needsModeration);
 
       if (uploadedUrls.length === 0) {
         throw new Error('Nenhuma imagem foi carregada com sucesso');
       }
 
-      // Step 2: Moderate new images
+      // Step 2: Moderate all images and the text in parallel (each with its own timeout)
       let needsManualReview = false;
       const moderationReasons: string[] = [];
-      
-      if (newImageUrls.length > 0) {
-        console.log('[Sell] Moderating', newImageUrls.length, 'images...');
-        
-        for (const imageUrl of newImageUrls) {
-          const moderationResult = await moderateImage(imageUrl);
-          
-          // Check for hard rejection (flagged content)
-          if (moderationResult.moderationFlagged) {
-            setModerating(false);
-            setSubmitting(false);
-            
-            // Get specific error message based on category
-            const errorMessage = getModerationErrorMessage(
-              moderationResult.moderationCategories,
-              moderationResult.reason
-            );
-            
-            toast({
-              title: errorMessage.title,
-              description: errorMessage.description,
-              variant: 'destructive',
-            });
-            
-            // Get short error label for image overlay
-            const shortError = moderationResult.moderationCategories.screenshot ? 'Screenshot'
-              : moderationResult.moderationCategories.heavily_edited ? 'Muito editada'
-              : moderationResult.moderationCategories.not_product ? 'Não é produto'
-              : moderationResult.moderationCategories.low_quality ? 'Baixa qualidade'
-              : 'Não permitido';
-            
-            setImages((prev) =>
-              prev.map((i) =>
-                i.url === imageUrl
-                  ? { ...i, moderated: true, moderationPassed: false, error: shortError }
-                  : i
-              )
-            );
-            
-            return;
-          }
-          
-          // Check for low confidence (needs manual review)
-          if (moderationResult.needsManualReview) {
-            needsManualReview = true;
-            if (moderationResult.moderationReason) moderationReasons.push(moderationResult.moderationReason);
-            console.log('[Sell] Image needs manual review due to low confidence:', moderationResult.confidenceScore);
-          }
-          
-          // Mark image as passed moderation
-          setImages((prev) =>
-            prev.map((i) =>
-              i.url === imageUrl
-                ? { ...i, moderated: true, moderationPassed: true }
-                : i
-            )
-          );
-        }
-        
-        console.log('[Sell] Image moderation complete, needsManualReview:', needsManualReview);
+
+      const imageTimeoutFallback: ModerationResult = {
+        imageApproved: false,
+        moderationFlagged: false,
+        moderationCategories: {},
+        needsManualReview: true,
+        moderationReason: 'Tempo limite na verificação automática da imagem. Revisão manual necessária.',
+      };
+
+      // Texto segue a semântica atual de falha do moderateText: auto-aprova
+      const textTimeoutFallback: TextModerationResult = {
+        textApproved: true,
+        moderationFlagged: false,
+        moderationCategories: {},
+        needsManualReview: false,
+      };
+
+      console.log('[Sell] Moderating', imagesToModerate.length, 'images + text in parallel...');
+
+      const [imageModerations, textModerationResult] = await Promise.all([
+        Promise.all(
+          imagesToModerate.map(async ({ url, file }) => {
+            // Versão reduzida vai no body; sem ela a function baixa a original pela URL
+            const downscaled = file ? await prepareImageForModeration(file) : null;
+            const result = await withModerationTimeout(moderateImage(url, downscaled), imageTimeoutFallback);
+            return { url, result };
+          })
+        ),
+        withModerationTimeout(
+          moderateText(formData.title.trim(), formData.description.trim()),
+          textTimeoutFallback
+        ),
+      ]);
+
+      // Hard rejection: mark every flagged image and abort with the first reason
+      const flaggedImages = imageModerations.filter(({ result }) => result.moderationFlagged);
+      if (flaggedImages.length > 0) {
+        setModerating(false);
+        setSubmitting(false);
+
+        const firstResult = flaggedImages[0].result;
+        const errorMessage = getModerationErrorMessage(
+          firstResult.moderationCategories,
+          firstResult.reason
+        );
+
+        toast({
+          title: errorMessage.title,
+          description: errorMessage.description,
+          variant: 'destructive',
+        });
+
+        const getShortError = (categories: Record<string, boolean>) =>
+          categories.screenshot ? 'Screenshot'
+            : categories.heavily_edited ? 'Muito editada'
+            : categories.not_product ? 'Não é produto'
+            : categories.low_quality ? 'Baixa qualidade'
+            : 'Não permitido';
+
+        setImages((prev) =>
+          prev.map((i) => {
+            const flaggedEntry = i.url ? flaggedImages.find(({ url }) => url === i.url) : undefined;
+            if (!flaggedEntry) return i;
+            return {
+              ...i,
+              moderated: true,
+              moderationPassed: false,
+              error: getShortError(flaggedEntry.result.moderationCategories),
+            };
+          })
+        );
+
+        return;
       }
 
-      // Step 2.5: Moderate text (title and description)
-      console.log('[Sell] Moderating text content...');
-      const textModerationResult = await moderateText(
-        formData.title.trim(),
-        formData.description.trim()
-      );
+      // Aggregate manual review flags and mark images as approved
+      for (const { url, result } of imageModerations) {
+        if (result.needsManualReview) {
+          needsManualReview = true;
+          if (result.moderationReason) moderationReasons.push(result.moderationReason);
+          console.log('[Sell] Image needs manual review due to low confidence:', result.confidenceScore);
+        }
+        setImages((prev) =>
+          prev.map((i) =>
+            i.url === url ? { ...i, moderated: true, moderationPassed: true } : i
+          )
+        );
+      }
 
-      // Check for hard rejection
+      // Text moderation: hard rejection
       if (textModerationResult.moderationFlagged) {
         setModerating(false);
         setSubmitting(false);
@@ -688,7 +750,7 @@ export default function Sell() {
         console.log('[Sell] Text needs manual review due to low confidence:', textModerationResult.confidenceScore);
       }
 
-      console.log('[Sell] Text content passed moderation');
+      console.log('[Sell] Moderation complete, needsManualReview:', needsManualReview);
       setModerating(false);
 
       // Step 3: Save product to database
