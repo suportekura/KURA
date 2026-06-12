@@ -10,7 +10,32 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.4"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -59,6 +84,83 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_coupon_uses: {
+        Row: {
+          coupon_id: string
+          created_at: string
+          discount_amount: number
+          id: string
+          payment_id: string
+          payment_type: string
+          user_id: string
+        }
+        Insert: {
+          coupon_id: string
+          created_at?: string
+          discount_amount: number
+          id?: string
+          payment_id: string
+          payment_type: string
+          user_id: string
+        }
+        Update: {
+          coupon_id?: string
+          created_at?: string
+          discount_amount?: number
+          id?: string
+          payment_id?: string
+          payment_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_coupon_uses_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "admin_coupons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_coupons: {
+        Row: {
+          active: boolean
+          applies_to: string
+          code: string
+          created_at: string
+          created_by: string
+          discount_type: string
+          discount_value: number
+          expires_at: string
+          id: string
+          max_uses: number | null
+        }
+        Insert: {
+          active?: boolean
+          applies_to: string
+          code: string
+          created_at?: string
+          created_by: string
+          discount_type: string
+          discount_value: number
+          expires_at: string
+          id?: string
+          max_uses?: number | null
+        }
+        Update: {
+          active?: boolean
+          applies_to?: string
+          code?: string
+          created_at?: string
+          created_by?: string
+          discount_type?: string
+          discount_value?: number
+          expires_at?: string
+          id?: string
+          max_uses?: number | null
+        }
+        Relationships: []
+      }
       admin_logs: {
         Row: {
           action: string
@@ -86,42 +188,6 @@ export type Database = {
           metadata?: Json | null
           target_id?: string | null
           target_type?: string
-        }
-        Relationships: []
-      }
-      asaas_customers: {
-        Row: {
-          asaas_customer_id: string
-          asaas_date_created: string | null
-          asaas_object: string
-          created_at: string
-          environment: string
-          id: string
-          status: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          asaas_customer_id: string
-          asaas_date_created?: string | null
-          asaas_object?: string
-          created_at?: string
-          environment?: string
-          id?: string
-          status?: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          asaas_customer_id?: string
-          asaas_date_created?: string | null
-          asaas_object?: string
-          created_at?: string
-          environment?: string
-          id?: string
-          status?: string
-          updated_at?: string
-          user_id?: string
         }
         Relationships: []
       }
@@ -525,7 +591,7 @@ export type Database = {
           delivery_method: Database["public"]["Enums"]["delivery_method"]
           delivery_notes: string | null
           id: string
-          product_id: string
+          product_id: string | null
           seller_id: string
           status: Database["public"]["Enums"]["order_status"]
           total_price: number
@@ -540,7 +606,7 @@ export type Database = {
           delivery_method: Database["public"]["Enums"]["delivery_method"]
           delivery_notes?: string | null
           id?: string
-          product_id: string
+          product_id?: string | null
           seller_id: string
           status?: Database["public"]["Enums"]["order_status"]
           total_price: number
@@ -555,7 +621,7 @@ export type Database = {
           delivery_method?: Database["public"]["Enums"]["delivery_method"]
           delivery_notes?: string | null
           id?: string
-          product_id?: string
+          product_id?: string | null
           seller_id?: string
           status?: Database["public"]["Enums"]["order_status"]
           total_price?: number
@@ -839,6 +905,7 @@ export type Database = {
           images: string[]
           moderated_at: string | null
           moderation_notes: string | null
+          moderation_reason: string | null
           moderation_status: string | null
           original_price: number | null
           price: number
@@ -867,6 +934,7 @@ export type Database = {
           images?: string[]
           moderated_at?: string | null
           moderation_notes?: string | null
+          moderation_reason?: string | null
           moderation_status?: string | null
           original_price?: number | null
           price: number
@@ -895,6 +963,7 @@ export type Database = {
           images?: string[]
           moderated_at?: string | null
           moderation_notes?: string | null
+          moderation_reason?: string | null
           moderation_status?: string | null
           original_price?: number | null
           price?: number
@@ -967,6 +1036,8 @@ export type Database = {
           updated_at: string
           user_id: string
           user_type: string | null
+          username: string | null
+          username_updated_at: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -999,6 +1070,8 @@ export type Database = {
           updated_at?: string
           user_id: string
           user_type?: string | null
+          username?: string | null
+          username_updated_at?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -1031,6 +1104,8 @@ export type Database = {
           updated_at?: string
           user_id?: string
           user_type?: string | null
+          username?: string | null
+          username_updated_at?: string | null
         }
         Relationships: []
       }
@@ -1109,7 +1184,6 @@ export type Database = {
         Row: {
           created_at: string
           id: string
-          renewal_date: string | null
           total_boosts: number
           total_boosts_24h: number
           total_boosts_3d: number
@@ -1124,7 +1198,6 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
-          renewal_date?: string | null
           total_boosts?: number
           total_boosts_24h?: number
           total_boosts_3d?: number
@@ -1139,7 +1212,6 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
-          renewal_date?: string | null
           total_boosts?: number
           total_boosts_24h?: number
           total_boosts_3d?: number
@@ -1216,7 +1288,6 @@ export type Database = {
           expires_at: string | null
           id: string
           plan_type: string
-          started_at: string
           updated_at: string
           user_id: string
         }
@@ -1225,7 +1296,6 @@ export type Database = {
           expires_at?: string | null
           id?: string
           plan_type?: string
-          started_at?: string
           updated_at?: string
           user_id: string
         }
@@ -1234,7 +1304,6 @@ export type Database = {
           expires_at?: string | null
           id?: string
           plan_type?: string
-          started_at?: string
           updated_at?: string
           user_id?: string
         }
@@ -1311,6 +1380,8 @@ export type Database = {
           social_website: string | null
           sold_count: number | null
           user_id: string | null
+          username: string | null
+          username_updated_at: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -1330,6 +1401,8 @@ export type Database = {
           social_website?: string | null
           sold_count?: number | null
           user_id?: string | null
+          username?: string | null
+          username_updated_at?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -1349,6 +1422,8 @@ export type Database = {
           social_website?: string | null
           sold_count?: number | null
           user_id?: string | null
+          username?: string | null
+          username_updated_at?: string | null
         }
         Relationships: []
       }
@@ -1403,24 +1478,15 @@ export type Database = {
         }
         Returns: Json
       }
-      admin_update_boosts:
-        | {
-            Args: {
-              p_note?: string
-              p_target_user_id: string
-              p_total_boosts: number
-            }
-            Returns: Json
-          }
-        | {
-            Args: {
-              p_boost_type?: string
-              p_note?: string
-              p_target_user_id: string
-              p_total_boosts: number
-            }
-            Returns: Json
-          }
+      admin_update_boosts: {
+        Args: {
+          p_boost_type?: string
+          p_note?: string
+          p_target_user_id: string
+          p_total_boosts: number
+        }
+        Returns: Json
+      }
       admin_update_subscription: {
         Args: {
           p_expires_at?: string
@@ -1439,6 +1505,15 @@ export type Database = {
         Returns: number
       }
       cleanup_expired_reservations: { Args: never; Returns: number }
+      get_admin_users_list: {
+        Args: {
+          p_limit?: number
+          p_offset?: number
+          p_plan_filter?: string
+          p_search?: string
+        }
+        Returns: Json
+      }
       get_product_with_distance: {
         Args: { product_id: string; user_lat?: number; user_lng?: number }
         Returns: {
@@ -1523,6 +1598,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_coupon_use_count: {
+        Args: { p_coupon_id: string }
+        Returns: boolean
+      }
       join_product_queue: { Args: { p_product_id: string }; Returns: Json }
       leave_product_queue: { Args: { p_product_id: string }; Returns: Json }
       promote_next_in_queue: { Args: { p_product_id: string }; Returns: Json }
@@ -1541,6 +1620,18 @@ export type Database = {
           error_message: string
           product_id: string
           success: boolean
+        }[]
+      }
+      search_profiles: {
+        Args: { p_query: string }
+        Returns: {
+          avatar_url: string
+          city: string
+          display_name: string
+          plan_type: string
+          sold_count: number
+          user_id: string
+          username: string
         }[]
       }
     }
@@ -1710,6 +1801,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],

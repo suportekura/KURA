@@ -100,7 +100,7 @@ export default function Profile() {
   const [showPublicProfileInfo, setShowPublicProfileInfo] = useState(false);
   const [reputation, setReputation] = useState<ReputationData | null>(null);
   const [purchasesCount, setPurchasesCount] = useState(0);
-  const [boostData, setBoostData] = useState<{ credits: { '24h': number; '3d': number; '7d': number }; renewal: string | null } | null>(null);
+  const [boostData, setBoostData] = useState<{ credits: { '24h': number; '3d': number; '7d': number } } | null>(null);
   const [planType, setPlanType] = useState<string>('free');
   const [showCouponUpsell, setShowCouponUpsell] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -163,7 +163,7 @@ export default function Profile() {
       
       const { data } = await supabase
         .from('user_boosts')
-        .select('total_boosts_24h, used_boosts_24h, total_boosts_3d, used_boosts_3d, total_boosts_7d, used_boosts_7d, renewal_date')
+        .select('total_boosts_24h, used_boosts_24h, total_boosts_3d, used_boosts_3d, total_boosts_7d, used_boosts_7d')
         .eq('user_id', user.id)
         .maybeSingle();
       
@@ -174,7 +174,6 @@ export default function Profile() {
             '3d': data.total_boosts_3d - data.used_boosts_3d,
             '7d': data.total_boosts_7d - data.used_boosts_7d,
           },
-          renewal: data.renewal_date,
         });
       }
     };
