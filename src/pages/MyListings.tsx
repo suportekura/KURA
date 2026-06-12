@@ -15,7 +15,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 import { useSellerQueueCounts } from '@/hooks/useProductQueue';
+import { useBoostCredits } from '@/hooks/useBoostCredits';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,7 +67,9 @@ export default function MyListings() {
   const [queueSheetProduct, setQueueSheetProduct] = useState<{ id: string; title: string } | null>(null);
   const [boostedProductIds, setBoostedProductIds] = useState<Set<string>>(new Set());
   const [boostModalProduct, setBoostModalProduct] = useState<{ id: string; title: string } | null>(null);
-  const [boostCredits, setBoostCredits] = useState<{ '24h': number; '3d': number; '7d': number } | null>(null);
+
+  // Saldo de impulsos — mesma fonte usada na publicação (user_boosts)
+  const { credits: boostCredits, totalCredits, refetch: refetchBoostCredits } = useBoostCredits();
 
   // Get queue counts for reserved products
   const reservedProductIds = useMemo(
@@ -74,36 +78,20 @@ export default function MyListings() {
   );
   const { counts: queueCounts } = useSellerQueueCounts(reservedProductIds);
 
-  // Fetch active boosts and credits
+  // Fetch active boosts
   useEffect(() => {
     if (!user) return;
-    const fetchBoostsAndCredits = async () => {
-      const [{ data: boosts }, { data: credits }] = await Promise.all([
-        supabase
-          .from('product_boosts')
-          .select('product_id')
-          .eq('user_id', user.id)
-          .gt('expires_at', new Date().toISOString()),
-        supabase
-          .from('user_boosts')
-          .select('total_boosts_24h, used_boosts_24h, total_boosts_3d, used_boosts_3d, total_boosts_7d, used_boosts_7d')
-          .eq('user_id', user.id)
-          .maybeSingle(),
-      ]);
+    const fetchActiveBoosts = async () => {
+      const { data: boosts } = await supabase
+        .from('product_boosts')
+        .select('product_id')
+        .eq('user_id', user.id)
+        .gt('expires_at', new Date().toISOString());
       if (boosts) {
         setBoostedProductIds(new Set(boosts.map(b => b.product_id)));
       }
-      if (credits) {
-        setBoostCredits({
-          '24h': credits.total_boosts_24h - credits.used_boosts_24h,
-          '3d': credits.total_boosts_3d - credits.used_boosts_3d,
-          '7d': credits.total_boosts_7d - credits.used_boosts_7d,
-        });
-      } else {
-        setBoostCredits({ '24h': 0, '3d': 0, '7d': 0 });
-      }
     };
-    fetchBoostsAndCredits();
+    fetchActiveBoosts();
   }, [user, products]);
 
   useEffect(() => {
@@ -273,26 +261,65 @@ export default function MyListings() {
       </header>
 
       <div className="px-4 py-4 space-y-3">
-        {/* Boost Nudge */}
-        <div
-          className="relative overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/[0.04] to-transparent p-4 cursor-pointer group transition-all hover:border-primary/25"
-          onClick={() => navigate('/boosts')}
-        >
-          <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-              <Zap className="w-[18px] h-[18px] text-primary" />
+        {/* Saldo de impulsos / CTA de compra */}
+        {totalCredits > 0 && boostCredits ? (
+          <div className="relative overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/[0.04] to-transparent p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Zap className="w-[18px] h-[18px] text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground leading-snug">
+                  Seus impulsos disponíveis
+                </p>
+                <div className="flex items-center gap-2 mt-2 flex-wrap">
+                  {([['24h', '24h'], ['3d', '3 dias'], ['7d', '7 dias']] as const).map(([type, label]) => (
+                    <span
+                      key={type}
+                      className={cn(
+                        'inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium',
+                        boostCredits[type] > 0
+                          ? 'bg-primary/10 text-primary'
+                          : 'bg-muted text-muted-foreground'
+                      )}
+                    >
+                      {label} · {boostCredits[type]}×
+                    </span>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-2 leading-relaxed">
+                  Toque em "Impulsionar" em um anúncio ativo para usar.
+                </p>
+              </div>
+              <button
+                onClick={() => navigate('/boosts')}
+                className="text-xs font-medium text-primary hover:underline flex-shrink-0 mt-0.5"
+              >
+                Comprar mais
+              </button>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground leading-snug">
-                Destaque seus anúncios
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                Produtos impulsionados recebem até 5x mais visualizações e vendem mais rápido.
-              </p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground/60 flex-shrink-0 mt-1 group-hover:text-primary transition-colors" />
           </div>
-        </div>
+        ) : (
+          <div
+            className="relative overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/[0.04] to-transparent p-4 cursor-pointer group transition-all hover:border-primary/25"
+            onClick={() => navigate('/boosts')}
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                <Zap className="w-[18px] h-[18px] text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground leading-snug">
+                  Destaque seus anúncios
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                  Você não tem impulsos no momento. Produtos impulsionados recebem até 5x mais visualizações e vendem mais rápido.
+                </p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground/60 flex-shrink-0 mt-1 group-hover:text-primary transition-colors" />
+            </div>
+          </div>
+        )}
 
         {products.map((product) => (
           <Card key={product.id} className="p-4">
@@ -460,7 +487,8 @@ export default function MyListings() {
         credits={boostCredits}
         onBoostActivated={() => {
           setBoostModalProduct(null);
-          // Refresh boosts
+          refetchBoostCredits();
+          // Refresh active boosts
           if (user) {
             supabase
               .from('product_boosts')
@@ -469,20 +497,6 @@ export default function MyListings() {
               .gt('expires_at', new Date().toISOString())
               .then(({ data }) => {
                 if (data) setBoostedProductIds(new Set(data.map(b => b.product_id)));
-              });
-            supabase
-              .from('user_boosts')
-              .select('total_boosts_24h, used_boosts_24h, total_boosts_3d, used_boosts_3d, total_boosts_7d, used_boosts_7d')
-              .eq('user_id', user.id)
-              .maybeSingle()
-              .then(({ data }) => {
-                if (data) {
-                  setBoostCredits({
-                    '24h': data.total_boosts_24h - data.used_boosts_24h,
-                    '3d': data.total_boosts_3d - data.used_boosts_3d,
-                    '7d': data.total_boosts_7d - data.used_boosts_7d,
-                  });
-                }
               });
           }
         }}
