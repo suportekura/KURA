@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Camera, Plus, X, Loader2, MapPin, AlertCircle, CheckCircle, ArrowLeft, Save, ShieldAlert, Zap, ChevronRight, Info } from 'lucide-react';
+import { Camera, Plus, X, Loader2, MapPin, AlertCircle, CheckCircle, ArrowLeft, Save, ShieldAlert, Zap, ChevronRight, Info, Clock, Flame, Rocket } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useToast } from '@/hooks/use-toast';
+import { useBoostCredits, type BoostType } from '@/hooks/useBoostCredits';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ImageUpload {
@@ -164,6 +165,14 @@ export default function Sell() {
   const [showPhotoTips, setShowPhotoTips] = useState(false);
   const [loadingProduct, setLoadingProduct] = useState(false);
   const [formData, setFormData] = useState(getInitialFormData);
+  const [selectedBoost, setSelectedBoost] = useState<BoostType | null>(null);
+  const { credits: boostCredits, totalCredits, refetch: refetchBoostCredits } = useBoostCredits();
+
+  const boostOptions: Array<{ type: BoostType; label: string; icon: typeof Clock }> = [
+    { type: '24h', label: '24 horas', icon: Clock },
+    { type: '3d', label: '3 dias', icon: Flame },
+    { type: '7d', label: '7 dias', icon: Rocket },
+  ];
 
   // Persist form data to sessionStorage on change (only for new listings)
   useEffect(() => {
@@ -624,18 +633,52 @@ export default function Sell() {
           seller_city: location?.city,
           seller_state: location?.state,
         };
-        
-        const { error: insertError } = await supabase.from('products').insert(insertData as any);
+
+        const { data: createdProduct, error: insertError } = await supabase
+          .from('products')
+          .insert(insertData as any)
+          .select('id')
+          .single();
 
         if (insertError) {
           console.error('[Sell] Insert error:', insertError);
           throw new Error('Erro ao publicar produto');
         }
 
+        // Apply boost from balance, if selected. The RPC debits the credit and
+        // creates the boost in a single transaction (no debit without boost).
+        // It requires status = 'active', so listings sent to manual review keep the credit.
+        let boostApplied = false;
+        if (selectedBoost && createdProduct?.id && !needsManualReview) {
+          const { data: boostData, error: boostError } = await supabase.rpc('activate_product_boost', {
+            p_product_id: createdProduct.id,
+            p_boost_type: selectedBoost,
+          });
+
+          const boostResult = boostData as unknown as { success: boolean; error?: string } | null;
+          if (boostError || !boostResult?.success) {
+            console.error('[Sell] Boost activation error:', boostError || boostResult?.error);
+            toast({
+              title: 'Anúncio publicado, mas o impulso não foi aplicado',
+              description: 'Seu crédito não foi debitado. Você pode impulsionar em Meus Anúncios.',
+            });
+          } else {
+            boostApplied = true;
+            refetchBoostCredits();
+          }
+        }
+
         if (needsManualReview) {
           toast({
             title: 'Anúncio enviado para revisão 🔍',
-            description: 'Seu anúncio será revisado pela nossa equipe e ficará disponível em breve.',
+            description: selectedBoost
+              ? 'Seu anúncio será revisado pela nossa equipe. O impulso não foi debitado — aplique em Meus Anúncios após a aprovação.'
+              : 'Seu anúncio será revisado pela nossa equipe e ficará disponível em breve.',
+          });
+        } else if (boostApplied) {
+          toast({
+            title: 'Produto publicado e impulsionado! 🚀',
+            description: 'Seu anúncio já está disponível no topo dos resultados.',
           });
         } else {
           toast({
@@ -1062,27 +1105,77 @@ export default function Sell() {
           </div>
         </div>
 
-        {/* Boost Nudge - subtle upsell */}
+        {/* Boost: aplicar crédito do saldo ou upsell quando não há créditos */}
         {!isEditMode && (
-          <div
-            className="relative overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/[0.04] to-transparent p-4 cursor-pointer group transition-all hover:border-primary/25"
-            onClick={() => navigate('/boosts')}
-          >
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Zap className="w-4.5 h-4.5 text-primary" />
+          totalCredits > 0 && boostCredits ? (
+            <div className="rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/[0.04] to-transparent p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Zap className="w-4.5 h-4.5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground leading-snug">
+                    Impulsionar este anúncio
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                    Você tem {totalCredits} {totalCredits === 1 ? 'impulso disponível' : 'impulsos disponíveis'}. Use um agora e apareça no topo.
+                  </p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground leading-snug">
-                  Quer vender mais rápido?
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                  Anúncios com destaque recebem até 5x mais visualizações. Conheça nossos planos de impulso.
-                </p>
+              <div className="grid grid-cols-3 gap-2">
+                {boostOptions.map((option) => {
+                  const available = boostCredits[option.type];
+                  const isSelected = selectedBoost === option.type;
+                  const Icon = option.icon;
+                  return (
+                    <button
+                      key={option.type}
+                      type="button"
+                      disabled={submitting || available <= 0}
+                      onClick={() => setSelectedBoost(isSelected ? null : option.type)}
+                      className={cn(
+                        'p-3 rounded-xl text-center transition-all disabled:opacity-40 tap-feedback',
+                        isSelected
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-card border border-border/50 hover:border-primary/50'
+                      )}
+                    >
+                      <Icon className={cn('w-4 h-4 mx-auto mb-1', isSelected ? 'text-primary-foreground' : 'text-primary')} />
+                      <p className="text-xs font-medium leading-tight">{option.label}</p>
+                      <p className={cn('text-[10px] mt-0.5', isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
+                        {available}× {available === 1 ? 'disponível' : 'disponíveis'}
+                      </p>
+                    </button>
+                  );
+                })}
               </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground/60 flex-shrink-0 mt-1 group-hover:text-primary transition-colors" />
+              {selectedBoost && (
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  O impulso de {boostOptions.find(o => o.type === selectedBoost)?.label} será debitado do seu saldo e aplicado assim que o anúncio for publicado.
+                </p>
+              )}
             </div>
-          </div>
+          ) : (
+            <div
+              className="relative overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/[0.04] to-transparent p-4 cursor-pointer group transition-all hover:border-primary/25"
+              onClick={() => navigate('/boosts')}
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Zap className="w-4.5 h-4.5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground leading-snug">
+                    Quer vender mais rápido?
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                    Anúncios com destaque recebem até 5x mais visualizações. Conheça nossos planos de impulso.
+                  </p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground/60 flex-shrink-0 mt-1 group-hover:text-primary transition-colors" />
+              </div>
+            </div>
+          )
         )}
 
         {/* Submit Button */}
