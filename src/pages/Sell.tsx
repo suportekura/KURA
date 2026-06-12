@@ -15,6 +15,24 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { categories, conditions, getSizesForCategory, isSizeOptional } from '@/data/mockProducts';
+import {
+  DndContext,
+  closestCenter,
+  MouseSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  arrayMove,
+  useSortable,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useGeolocation } from '@/hooks/useGeolocation';
@@ -121,6 +139,92 @@ interface TextModerationResult {
   needsManualReview?: boolean;
   moderationReason?: string;
   error?: string;
+}
+
+// Tile de imagem reordenável por drag and drop (mouse, toque com press-and-hold, teclado)
+function SortableImageTile({
+  img,
+  index,
+  submitting,
+  onRemove,
+}: {
+  img: ImageUpload;
+  index: number;
+  submitting: boolean;
+  onRemove: (id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: img.id,
+    disabled: submitting,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        // 'manipulation' mantém o scroll horizontal nativo; o press-and-hold
+        // (delay do TouchSensor) é que inicia o drag no toque
+        touchAction: 'manipulation',
+      }}
+      {...attributes}
+      {...listeners}
+      className={cn(
+        'relative flex-shrink-0 w-28 h-28 rounded-xl overflow-hidden select-none cursor-grab active:cursor-grabbing',
+        img.moderationPassed === false && 'ring-2 ring-destructive',
+        isDragging && 'z-10 opacity-90 shadow-elevated ring-2 ring-primary'
+      )}
+    >
+      <img src={img.preview} alt={`Foto ${index + 1} do produto`} className="w-full h-full object-cover pointer-events-none" />
+
+      {/* Upload status overlay */}
+      {img.uploading && (
+        <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      )}
+
+      {/* Moderation failed overlay */}
+      {img.moderationPassed === false && (
+        <div className="absolute inset-0 bg-destructive/30 flex flex-col items-center justify-center gap-1">
+          <ShieldAlert className="w-6 h-6 text-destructive" />
+          <span className="text-[9px] text-destructive font-medium px-1 text-center">
+            Não permitido
+          </span>
+        </div>
+      )}
+
+      {img.uploaded && img.moderationPassed !== false && (
+        <div className="absolute top-2 left-2">
+          <CheckCircle className="w-5 h-5 text-primary" />
+        </div>
+      )}
+
+      {img.error && img.moderationPassed !== false && (
+        <div className="absolute inset-0 bg-destructive/20 flex items-center justify-center">
+          <AlertCircle className="w-6 h-6 text-destructive" />
+        </div>
+      )}
+
+      {!submitting && (
+        <button
+          onClick={() => onRemove(img.id)}
+          onPointerDown={(e) => e.stopPropagation()}
+          aria-label="Remover foto"
+          className="absolute top-2 right-2 w-6 h-6 rounded-full bg-background/80 flex items-center justify-center"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      )}
+
+      {index === 0 && img.moderationPassed !== false && (
+        <span className="absolute bottom-2 left-2 text-[10px] bg-primary text-primary-foreground px-2 py-0.5 rounded">
+          Principal
+        </span>
+      )}
+    </div>
+  );
 }
 
 export default function Sell() {
@@ -385,6 +489,25 @@ export default function Sell() {
         URL.revokeObjectURL(image.preview);
       }
       return prev.filter((img) => img.id !== id);
+    });
+  };
+
+  // Drag and drop: mouse exige 6px de movimento (preserva o clique nos botões);
+  // toque exige press-and-hold de 200ms (preserva o scroll horizontal da faixa)
+  const dndSensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleImageDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setImages((prev) => {
+      const oldIndex = prev.findIndex((img) => img.id === active.id);
+      const newIndex = prev.findIndex((img) => img.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      return arrayMove(prev, oldIndex, newIndex);
     });
   };
 
@@ -848,74 +971,36 @@ export default function Sell() {
               </ul>
             </div>
           )}
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
-            {images.map((img, index) => (
-              <div
-                key={img.id}
-                className={cn(
-                  "relative flex-shrink-0 w-28 h-28 rounded-xl overflow-hidden",
-                  img.moderationPassed === false && "ring-2 ring-destructive"
-                )}
-              >
-                <img src={img.preview} alt="" className="w-full h-full object-cover" />
-                
-                {/* Upload status overlay */}
-                {img.uploading && (
-                  <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  </div>
-                )}
-                
-                {/* Moderation failed overlay */}
-                {img.moderationPassed === false && (
-                  <div className="absolute inset-0 bg-destructive/30 flex flex-col items-center justify-center gap-1">
-                    <ShieldAlert className="w-6 h-6 text-destructive" />
-                    <span className="text-[9px] text-destructive font-medium px-1 text-center">
-                      Não permitido
-                    </span>
-                  </div>
-                )}
-                
-                {img.uploaded && img.moderationPassed !== false && (
-                  <div className="absolute top-2 left-2">
-                    <CheckCircle className="w-5 h-5 text-primary" />
-                  </div>
-                )}
-                
-                {img.error && img.moderationPassed !== false && (
-                  <div className="absolute inset-0 bg-destructive/20 flex items-center justify-center">
-                    <AlertCircle className="w-6 h-6 text-destructive" />
-                  </div>
-                )}
+          <DndContext
+            sensors={dndSensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleImageDragEnd}
+          >
+            <SortableContext items={images.map((img) => img.id)} strategy={horizontalListSortingStrategy}>
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
+                {images.map((img, index) => (
+                  <SortableImageTile
+                    key={img.id}
+                    img={img}
+                    index={index}
+                    submitting={submitting}
+                    onRemove={removeImage}
+                  />
+                ))}
 
-                {!submitting && (
+                {images.length < 5 && (
                   <button
-                    onClick={() => removeImage(img.id)}
-                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-background/80 flex items-center justify-center"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={submitting}
+                    className="flex-shrink-0 w-28 h-28 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-olive-warm/50 transition-colors disabled:opacity-50"
                   >
-                    <X className="w-3 h-3" />
+                    <Camera className="w-6 h-6 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Adicionar</span>
                   </button>
                 )}
-                
-                {index === 0 && img.moderationPassed !== false && (
-                  <span className="absolute bottom-2 left-2 text-[10px] bg-primary text-primary-foreground px-2 py-0.5 rounded">
-                    Principal
-                  </span>
-                )}
               </div>
-            ))}
-            
-            {images.length < 5 && (
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={submitting}
-                className="flex-shrink-0 w-28 h-28 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-olive-warm/50 transition-colors disabled:opacity-50"
-              >
-                <Camera className="w-6 h-6 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Adicionar</span>
-              </button>
-            )}
-          </div>
+            </SortableContext>
+          </DndContext>
           
           <input
             ref={fileInputRef}
@@ -927,7 +1012,7 @@ export default function Sell() {
           />
           
           <p className="text-xs text-muted-foreground">
-            Adicione até 5 fotos. A primeira será a principal. Máx. 5MB por foto.
+            Adicione até 5 fotos e arraste para reordenar — a primeira será a capa. Máx. 5MB por foto.
           </p>
         </div>
 
