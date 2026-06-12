@@ -388,7 +388,7 @@ export default function Chat() {
           .insert({
             conversation_id: conversationId,
             sender_id: user.id,
-            content: '✅ Pedido confirmado! Obrigado pela compra.',
+            content: '✅ Pedido confirmado!',
           });
       }
 
