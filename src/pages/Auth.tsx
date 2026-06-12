@@ -5,7 +5,8 @@ import kuraLogoAuth from '@/assets/kura-wordmark-flat.png';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { ProfileSetupForm } from '@/components/auth/ProfileSetupForm';
-import { AppleSignInButton } from '@/components/auth/AppleSignInButton';
+// Apple Sign-In desativado por enquanto — será adicionado futuramente
+// import { AppleSignInButton } from '@/components/auth/AppleSignInButton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -373,40 +374,41 @@ export default function Auth() {
     }
   };
 
-  const handleAppleSignIn = async () => {
-    setLoading(true);
-    try {
-      // Preserve account type selection across the OAuth redirect
-      if (userType) {
-        sessionStorage.setItem('oauth_pending_user_type', userType);
-      } else {
-        sessionStorage.removeItem('oauth_pending_user_type');
-      }
+  // Apple Sign-In desativado por enquanto — será adicionado futuramente
+  // const handleAppleSignIn = async () => {
+  //   setLoading(true);
+  //   try {
+  //     // Preserve account type selection across the OAuth redirect
+  //     if (userType) {
+  //       sessionStorage.setItem('oauth_pending_user_type', userType);
+  //     } else {
+  //       sessionStorage.removeItem('oauth_pending_user_type');
+  //     }
 
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'apple',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
+  //     const { error } = await supabase.auth.signInWithOAuth({
+  //       provider: 'apple',
+  //       options: {
+  //         redirectTo: `${window.location.origin}/auth/callback`,
+  //       },
+  //     });
 
-      if (error) {
-        toast({
-          title: 'Erro ao entrar com Apple',
-          description: translateAuthError(error.message),
-          variant: 'destructive',
-        });
-        setLoading(false);
-      }
-    } catch (err) {
-      toast({
-        title: 'Erro ao entrar com Apple',
-        description: 'Não foi possível conectar com a Apple. Tente novamente.',
-        variant: 'destructive',
-      });
-      setLoading(false);
-    }
-  };
+  //     if (error) {
+  //       toast({
+  //         title: 'Erro ao entrar com Apple',
+  //         description: translateAuthError(error.message),
+  //         variant: 'destructive',
+  //       });
+  //       setLoading(false);
+  //     }
+  //   } catch (err) {
+  //     toast({
+  //       title: 'Erro ao entrar com Apple',
+  //       description: 'Não foi possível conectar com a Apple. Tente novamente.',
+  //       variant: 'destructive',
+  //     });
+  //     setLoading(false);
+  //   }
+  // };
 
   // ===== LOGIN HANDLERS =====
   const handleSignIn = async (e: React.FormEvent) => {
@@ -1116,7 +1118,8 @@ export default function Auth() {
             </div>
           </div>
 
-          <AppleSignInButton onClick={handleAppleSignIn} isLoading={loading} label="Cadastrar com Apple" />
+          {/* Apple Sign-In desativado por enquanto — será adicionado futuramente */}
+          {/* <AppleSignInButton onClick={handleAppleSignIn} isLoading={loading} label="Cadastrar com Apple" /> */}
 
           <Button
             type="button"
@@ -1503,7 +1506,8 @@ export default function Auth() {
                 </div>
               </div>
 
-              <AppleSignInButton onClick={handleAppleSignIn} isLoading={loading} label="Entrar com Apple" />
+              {/* Apple Sign-In desativado por enquanto — será adicionado futuramente */}
+              {/* <AppleSignInButton onClick={handleAppleSignIn} isLoading={loading} label="Entrar com Apple" /> */}
 
               <Button
                 type="button"
