@@ -183,6 +183,28 @@ html {
     box-shadow: var(--shadow-elevated);
   }
 
+  /* Modificador de .card-premium para produtos impulsionados (boost):
+     contorno âmbar da marca + glow externo sutil */
+  .card-boosted {
+    @apply border-secondary/60;
+    box-shadow:
+      0 0 0 1px hsl(var(--secondary) / 0.35),
+      0 0 16px -4px hsl(var(--secondary) / 0.5),
+      var(--shadow-card);
+  }
+
+  .card-boosted:hover {
+    box-shadow:
+      0 0 0 1px hsl(var(--secondary) / 0.5),
+      0 0 24px -4px hsl(var(--secondary) / 0.65),
+      var(--shadow-elevated);
+  }
+
+  /* Glow âmbar para badges sobre produtos impulsionados */
+  .glow-secondary {
+    box-shadow: 0 0 10px hsl(var(--secondary) / 0.55);
+  }
+
   .card-elevated {
     @apply rounded-2xl bg-card;
     box-shadow: var(--shadow-elevated);

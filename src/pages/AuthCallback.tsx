@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -7,8 +7,13 @@ import { Loader2 } from 'lucide-react';
 const AuthCallback = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const handledRef = useRef(false);
 
   useEffect(() => {
+    // O código PKCE é de uso único — garante que o callback rode apenas uma vez
+    if (handledRef.current) return;
+    handledRef.current = true;
+
     const handleCallback = async () => {
       const params = new URLSearchParams(window.location.search);
       const error = params.get('error');
@@ -23,13 +28,20 @@ const AuthCallback = () => {
         return;
       }
 
-      // Exchange the PKCE auth code for a Supabase session.
-      // exchangeCodeForSession reads the `code` query param from the URL automatically.
-      const { data, error: sessionError } = await supabase.auth.exchangeCodeForSession(
-        window.location.href
-      );
+      // O client Supabase (detectSessionInUrl ativo por padrão) já troca o código
+      // PKCE automaticamente na inicialização; getSession() aguarda essa troca
+      // terminar. Chamar exchangeCodeForSession com o código já consumido falharia
+      // e mostrava "Erro ao autenticar" mesmo com o login bem-sucedido.
+      const { data: { session: existingSession } } = await supabase.auth.getSession();
+      let user = existingSession?.user ?? null;
 
-      if (sessionError || !data?.user) {
+      if (!user) {
+        // Fallback: a detecção automática não criou a sessão — troca manual.
+        const { data } = await supabase.auth.exchangeCodeForSession(window.location.href);
+        user = data?.user ?? null;
+      }
+
+      if (!user) {
         toast({
           title: 'Erro ao autenticar',
           description: 'Não foi possível completar o login com Google. Tente novamente.',
@@ -38,8 +50,6 @@ const AuthCallback = () => {
         navigate('/auth');
         return;
       }
-
-      const user = data.user;
 
       // Google verifies the user's email — ensure our profile reflects this so
       // useAuth doesn't sign the user out seeing email_verified = false.

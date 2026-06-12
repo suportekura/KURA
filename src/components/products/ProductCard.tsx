@@ -63,7 +63,7 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
         to={`/product/${product.id}`}
         className="block group"
       >
-        <div className="card-premium overflow-hidden">
+        <div className={cn('card-premium overflow-hidden', product.isBoosted && 'card-boosted')}>
           {/* Image Container */}
           <div className="relative aspect-square overflow-hidden bg-olive-muted">
             {!imageLoaded && (
@@ -80,7 +80,15 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
             />
 
             {discount > 0 && (
-              <Badge className="absolute top-2 left-2 bg-primary text-primary-foreground border-0 text-[10px] px-1.5 py-0.5">
+              <Badge
+                variant={product.isBoosted ? 'secondary' : 'default'}
+                className={cn(
+                  'absolute top-2 left-2 border-0 text-[10px] px-1.5 py-0.5',
+                  product.isBoosted
+                    ? 'glow-secondary'
+                    : 'bg-primary text-primary-foreground'
+                )}
+              >
                 -{discount}%
               </Badge>
             )}
@@ -168,9 +176,9 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
               )}
               <div className="ml-auto">
                 {product.isBoosted ? (
-                  <div className="flex items-center gap-1">
-                    <Star className="w-3 h-3 fill-primary text-primary" />
-                    <span className="text-[10px] font-medium text-primary">Destaque</span>
+                  <div className="flex items-center gap-1 rounded-full bg-secondary px-1.5 py-0.5">
+                    <Star className="w-2.5 h-2.5 fill-secondary-foreground text-secondary-foreground" />
+                    <span className="text-[10px] font-medium text-secondary-foreground">Destaque</span>
                   </div>
                 ) : (
                   <ReputationBadge

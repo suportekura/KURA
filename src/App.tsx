@@ -14,6 +14,7 @@ import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { AdminRoute } from "@/components/auth/AdminRoute";
 import { PublicRoute } from "@/components/auth/PublicRoute";
 import { LocationPermissionModal, LocationBlockedDialog } from "@/components/location";
+import { InstallPromptModal } from "@/components/pwa";
 
 // Critical routes — synchronous bundle (needed on first paint)
 import Index from "./pages/Index";
@@ -100,6 +101,9 @@ const App = () => {
                 {/* Global Location Dialogs */}
                 <LocationPermissionModal />
                 <LocationBlockedDialog />
+
+                {/* PWA install prompt — pós-login */}
+                <InstallPromptModal />
 
                 <Suspense fallback={<PageFallback />}>
                   <AnimatedRoutes>

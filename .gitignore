@@ -38,3 +38,7 @@ supabase/.temp/
 .worktrees/
 .superpowers/
 *.timestamp-*.mjs
+
+# Artefatos do vite-plugin-pwa em dev (devOptions.enabled) e do tsc -b
+dev-dist/
+*.tsbuildinfo

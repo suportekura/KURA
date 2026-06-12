@@ -1,0 +1,136 @@
+{
+  "produto": {
+    "nome": "Kura",
+    "descricao": "Marketplace de brechó online (moda circular) onde pessoas físicas (PF), brechós e vendedores independentes compram e vendem roupas usadas perto de si, com filtro por distância, chat com ofertas, PIX/cartão, assinaturas de vendedor e impulsionamento de anúncios.",
+    "tagline": "Descubra peças únicas perto de você!",
+    "url": "https://kuralab.com.br",
+    "stack": [
+      "React 18.3.1",
+      "TypeScript 5.8",
+      "Vite 5/6 + SWC",
+      "Tailwind CSS 3.4",
+      "shadcn/ui (Radix UI)",
+      "TanStack React Query v5",
+      "React Hook Form + Zod",
+      "Framer Motion",
+      "Supabase (Postgres/Auth/Realtime/Edge Functions/Storage)",
+      "Capacitor (iOS / app nativo)",
+      "vite-plugin-pwa (PWA)",
+      "Pagar.me (pagamentos)",
+      "Vercel (deploy)"
+    ]
+  },
+  "publico": {
+    "segmento": "Marketplace C2C/B2C (peer-to-peer) de moda de segunda mão — brechó online brasileiro",
+    "perfil_usuario": "Vendedores Pessoa Física (indivíduos), brechós e Pessoa Jurídica (Loja Oficial), e compradores de moda circular no Brasil. Conta segmentada em PF e PJ no cadastro.",
+    "contexto_de_uso": "Mobile-first (PWA + app Capacitor iOS), uso no celular, baseado em geolocalização ('perto de você') com filtro por distância, preço e condição. UI 100% em PT-BR e moeda BRL."
+  },
+  "cores": [
+    { "variavel": "--primary / theme_color", "valor": "hsl(96 20% 29%) ≈ #47593B (token); #5a7a32 (theme-color/PWA, verde da caixa da logo)", "papel": "primary", "uso": "Verde musgo da marca — botões principais, nav ativa, anéis de foco, links, header" },
+    { "variavel": "--background", "valor": "hsl(45 30% 97%) ≈ #FAF8F2 / #f7f5f0 (background_color PWA)", "papel": "background", "uso": "Fundo creme da aplicação (light mode)" },
+    { "variavel": "--foreground", "valor": "hsl(40 15% 20%) ≈ #3A352C", "papel": "text", "uso": "Texto principal (marrom escuro morno)" },
+    { "variavel": "--secondary", "valor": "hsl(50 40% 40%) ≈ #8F7B33", "papel": "secondary", "uso": "Marrom oliva pastel — botões secundários" },
+    { "variavel": "--muted", "valor": "hsl(60 25% 50%) ≈ #9F9F60", "papel": "muted", "uso": "Verde claro pastel — textos e elementos atenuados" },
+    { "variavel": "--accent", "valor": "hsl(60 30% 55%) ≈ #ACAC63", "papel": "accent", "uso": "Amarelo esverdeado pastel — hover ghost/outline, destaques" },
+    { "variavel": "--card", "valor": "hsl(45 25% 95%) ≈ #F4F1E9", "papel": "surface", "uso": "Fundo de cards" },
+    { "variavel": "--destructive", "valor": "hsl(0 60% 50%) ≈ #CC3333", "papel": "error", "uso": "Ações destrutivas, erros, exclusões" },
+    { "variavel": "--success", "valor": "hsl(100 26% 34%) ≈ #44703E", "papel": "success", "uso": "Estados de sucesso, confirmações" },
+    { "variavel": "--border", "valor": "hsl(45 20% 88%) ≈ #E6E0D4", "papel": "border", "uso": "Bordas de cards/inputs, scrollbar" },
+    { "variavel": "--input", "valor": "hsl(45 20% 90%) ≈ #EAE5DA", "papel": "input", "uso": "Fundo/borda de campos de formulário" },
+    { "variavel": "--ring", "valor": "hsl(96 20% 29%)", "papel": "focus-ring", "uso": "Anel de foco (focus-visible)" },
+    { "variavel": "--olive-warm", "valor": "hsl(45 25% 92%) ≈ #F0EBE0", "papel": "custom-surface", "uso": "Fundo de inputs premium, gradiente de superfície" },
+    { "variavel": "--olive-muted", "valor": "hsl(50 20% 85%) ≈ #E0DAC9", "papel": "custom-surface", "uso": "Tom oliva suave para superfícies" },
+    { "variavel": "--primary (dark)", "valor": "hsl(98 17% 28%)", "papel": "primary-dark", "uso": "Dark mode 'Luxury Premium' — verde musgo deep (igual à caixa da logo)" },
+    { "variavel": "--background (dark)", "valor": "hsl(80 20% 10%) ≈ #1C1F16", "papel": "background-dark", "uso": "Fundo do dark mode (verde-musgo quase preto)" },
+    { "variavel": "(badge verificado)", "valor": "#3399FF aprox. (azul)", "papel": "accent-badge", "uso": "Selo 'Vendedor Verificado' (badge-verified.png)" },
+    { "variavel": "(badge loja)", "valor": "#D4AF2A aprox. (dourado/mostarda)", "papel": "accent-badge", "uso": "Selo 'Loja Oficial' (badge-store.png)" }
+  ],
+  "tipografia": {
+    "fontes": [
+      {
+        "nome": "Helvetica Neue (fallback: Helvetica, Arial, sans-serif)",
+        "origem": "Sistema (font stack nativa — NÃO carregada de Google Fonts/CDN). Definida como font-display E font-body no Tailwind e em body/headings no index.css",
+        "pesos_utilizados": ["400 (normal)", "500 (medium/headings)", "600 (semibold/títulos de card)"]
+      },
+      {
+        "nome": "Serifa (tipo slab/serif) — apenas no logotipo",
+        "origem": "Embutida nos arquivos de logo (kura-k.svg / kura-wordmark / kura-logo). Não usada na UI",
+        "pesos_utilizados": ["bold (display)"]
+      }
+    ],
+    "hierarquia": {
+      "h1": { "tamanho": "definido por utilitário no uso (sem token global)", "peso": "500 (font-medium)", "line_height": "tracking-tight" },
+      "h2": { "tamanho": "definido por utilitário no uso", "peso": "500 (font-medium)", "line_height": "tracking-tight" },
+      "h3": { "tamanho": "1.5rem / 24px (CardTitle: text-2xl)", "peso": "600 (font-semibold)", "line_height": "leading-none / tracking-tight" },
+      "body": { "tamanho": "1rem / 16px (base, antialiased)", "peso": "400", "line_height": "normal" },
+      "caption": { "tamanho": "0.875rem / 14px (text-sm — CardDescription, botões, labels)", "peso": "400-500", "line_height": "normal" }
+    }
+  },
+  "logo": {
+    "arquivos": [
+      "src/assets/kura-logo-main.png (monograma 'K' creme dentro de caixa quadrada verde-oliva arredondada, com broto/folha sobre o K)",
+      "src/assets/kura-icon.png (versão ícone do K em caixa olive)",
+      "src/assets/kura-wordmark-flat.png (wordmark 'KURA' serifado, creme com sombra oliva + folha)",
+      "src/assets/kura-logo.png (wordmark 'Kura' serif itálico, creme)",
+      "src/assets/kura-logo-auth.png (logo usado na tela de login)",
+      "src/assets/kura-k.svg / kura-k-dark.svg / kura-k-light.svg (monograma 'K' vetorial, variantes claro/escuro)",
+      "src/assets/leaf-icon.png (folha/broto isolado — símbolo de sustentabilidade)",
+      "public/favicon.ico, public/favicon.png (64x64), public/pwa-192x192.png, public/pwa-512x512.png (incl. maskable)",
+      "public/apple-touch-icon.png + public/apple-icons/*.png (60/76/120/152/167/180)"
+    ],
+    "variacoes": [
+      "Monograma K em caixa olive (app icon / favicon)",
+      "Wordmark KURA serif (versão flat)",
+      "Wordmark Kura serif itálico creme",
+      "K isolado SVG dark/light",
+      "Símbolo folha/broto isolado",
+      "Selos: badge-verified (azul, Vendedor Verificado) e badge-store (dourado, Loja Oficial)"
+    ],
+    "biblioteca_icones": "Lucide React (lucide-react ^0.462.0)"
+  },
+  "componentes": {
+    "border_radius": "--radius: 1rem (16px) como base. Escala: sm≈12px, md≈14px, lg=16px, xl=20px, 2xl=24px, 3xl=28px. Botões/inputs shadcn usam rounded-md (~14px); botões/inputs/cards 'premium' usam rounded-xl/2xl (20-24px); badges/avatares rounded-full.",
+    "sombras": [
+      "--shadow-soft: 0 2px 20px -4px hsl(40 15% 20% / 0.08)",
+      "--shadow-card: 0 4px 24px -8px hsl(40 15% 20% / 0.1)",
+      "--shadow-elevated: 0 8px 40px -12px hsl(40 15% 20% / 0.15)",
+      "(dark) sombras equivalentes com hsl(0 0% 0%) e opacidade 0.3-0.5"
+    ],
+    "spacing_scale": [
+      "Escala default do Tailwind (rem-based)",
+      "container: center, padding 1rem, screen 2xl=1400px",
+      "Padding recorrente de card: p-6 (1.5rem)",
+      "Sem escala de espaçamento customizada além do default"
+    ],
+    "botoes": {
+      "estilos": ["default (bg-primary)", "destructive", "outline", "secondary", "ghost", "link", "+ .btn-primary custom com hover scale(1.02)/active scale(0.97) e glow olive"],
+      "tamanhos": ["sm (h-9)", "default (h-10)", "lg (h-11)", "icon (h-10 w-10)"]
+    },
+    "cards": "rounded-lg (16px), border, bg-card, shadow-sm (shadcn) — variante .card-premium: rounded-2xl, border/50, shadow-card->shadow-elevated no hover, transição 0.15s",
+    "inputs": "h-10, rounded-md, border-input, bg-background, foco ring-2 ring-ring + offset — variante .input-premium: bg-olive-warm, sem borda, rounded-xl, foco ring-2 ring-primary/30"
+  },
+  "tom_voz": {
+    "estilo_linguagem": "PT-BR informal, amigável e direto, com vocabulário simples e orientado à ação. Toques 'premium/natural' nos comentários internos de design ('Pastel Natural Premium', 'Luxury Premium').",
+    "exemplos_copies": [
+      "Compre e venda peças únicas perto de você",
+      "Descubra peças únicas perto de você!",
+      "Encontre peças únicas",
+      "Encontre peças únicas, venda roupas que não usa mais e participe da moda circular.",
+      "A Kura conecta pessoas, brechós e vendedores independentes em um marketplace de moda circular.",
+      "Informe seus dados para começar",
+      "Complete seu cadastro para continuar",
+      "Escolha uma senha segura para sua conta",
+      "Cadastro concluído! 🎉",
+      "Produto impulsionado! 🚀",
+      "📦 Pedido entregue",
+      "Nenhum produto encontrado / Tente outros filtros ou categorias",
+      "Loja Oficial / Vendedor Verificado"
+    ],
+    "usa_emoji": true
+  },
+  "posicionamento": {
+    "adjetivos_visuais": ["natural", "orgânico", "terroso/earthy", "sustentável", "premium/aconchegante", "pastel e suave", "minimalista", "mobile-first", "acolhedor"],
+    "diferencial": "Moda circular com proximidade geográfica: encontrar e vender roupas de segunda mão 'perto de você' (cálculo de distância), conectando pessoas, brechós e vendedores independentes — paleta verde-oliva + creme + folha reforçando sustentabilidade.",
+    "valores_missao": "Não há arquivo de missão/valores formal no código, mas a comunicação evidencia: sustentabilidade / 'moda circular', reaproveitamento ('venda roupas que não usa mais'), comunidade local e conexão entre pessoas. O símbolo folha/broto e a paleta olive são os portadores visuais desse valor."
+  }
+}

@@ -64,6 +64,12 @@ export default defineConfig(({ mode }) => ({
           },
         ],
       },
+      // Serve manifest + SW também no dev server, permitindo testar o fluxo
+      // de instalação PWA (beforeinstallprompt) em localhost
+      devOptions: {
+        enabled: true,
+        suppressWarnings: true,
+      },
       workbox: {
         navigateFallbackDenylist: [/^\/~oauth/],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
