@@ -1,12 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, ArrowLeft, User, Loader2 } from 'lucide-react';
+import { Star, ArrowLeft, User, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Review {
@@ -22,86 +21,83 @@ interface Review {
 export default function Reviews() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { toast } = useToast();
   const [receivedReviews, setReceivedReviews] = useState<Review[]>([]);
   const [givenReviews, setGivenReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [averageRating, setAverageRating] = useState<number | null>(null);
 
-  useEffect(() => {
+  const fetchReviews = useCallback(async () => {
     if (!user) return;
+    setLoading(true);
+    setError(false);
+    try {
+      // Fetch reviews received (as seller or buyer)
+      const { data: received, error: receivedError } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('reviewed_id', user.id)
+        .order('created_at', { ascending: false });
 
-    const fetchReviews = async () => {
-      try {
-        // Fetch reviews received (as seller or buyer)
-        const { data: received, error: receivedError } = await supabase
-          .from('reviews')
-          .select('*')
-          .eq('reviewed_id', user.id)
-          .order('created_at', { ascending: false });
+      if (receivedError) throw receivedError;
 
-        if (receivedError) throw receivedError;
+      // Fetch reviews given
+      const { data: given, error: givenError } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('reviewer_id', user.id)
+        .order('created_at', { ascending: false });
 
-        // Fetch reviews given
-        const { data: given, error: givenError } = await supabase
-          .from('reviews')
-          .select('*')
-          .eq('reviewer_id', user.id)
-          .order('created_at', { ascending: false });
+      if (givenError) throw givenError;
 
-        if (givenError) throw givenError;
+      // Get reviewer/reviewed names
+      const receivedWithNames = await Promise.all(
+        (received || []).map(async (review) => {
+          const { data: profile } = await supabase
+            .from('public_profiles')
+            .select('display_name')
+            .eq('user_id', review.reviewer_id)
+            .maybeSingle();
+          return {
+            ...review,
+            reviewer_name: profile?.display_name || 'Usuário',
+          };
+        })
+      );
 
-        // Get reviewer/reviewed names
-        const receivedWithNames = await Promise.all(
-          (received || []).map(async (review) => {
-            const { data: profile } = await supabase
-              .from('public_profiles')
-              .select('display_name')
-              .eq('user_id', review.reviewer_id)
-              .maybeSingle();
-            return {
-              ...review,
-              reviewer_name: profile?.display_name || 'Usuário',
-            };
-          })
-        );
+      const givenWithNames = await Promise.all(
+        (given || []).map(async (review) => {
+          const { data: profile } = await supabase
+            .from('public_profiles')
+            .select('display_name')
+            .eq('user_id', review.reviewed_id)
+            .maybeSingle();
+          return {
+            ...review,
+            reviewed_name: profile?.display_name || 'Usuário',
+          };
+        })
+      );
 
-        const givenWithNames = await Promise.all(
-          (given || []).map(async (review) => {
-            const { data: profile } = await supabase
-              .from('public_profiles')
-              .select('display_name')
-              .eq('user_id', review.reviewed_id)
-              .maybeSingle();
-            return {
-              ...review,
-              reviewed_name: profile?.display_name || 'Usuário',
-            };
-          })
-        );
+      setReceivedReviews(receivedWithNames);
+      setGivenReviews(givenWithNames);
 
-        setReceivedReviews(receivedWithNames);
-        setGivenReviews(givenWithNames);
-
-        // Calculate average rating
-        if (receivedWithNames.length > 0) {
-          const sum = receivedWithNames.reduce((acc, r) => acc + r.rating, 0);
-          setAverageRating(sum / receivedWithNames.length);
-        }
-      } catch (err) {
-        console.error('[Reviews] Error fetching reviews:', err);
-        toast({
-          title: 'Erro ao carregar avaliações',
-          description: 'Tente novamente.',
-          variant: 'destructive',
-        });
-      } finally {
-        setLoading(false);
+      // Calculate average rating
+      if (receivedWithNames.length > 0) {
+        const sum = receivedWithNames.reduce((acc, r) => acc + r.rating, 0);
+        setAverageRating(sum / receivedWithNames.length);
       }
-    };
+    } catch (err) {
+      console.error('[Reviews] Error fetching reviews:', err);
+      setError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
+  useEffect(() => {
     fetchReviews();
-  }, [user, toast]);
+  }, [fetchReviews]);
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString('pt-BR', {
@@ -148,6 +144,39 @@ export default function Reviews() {
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-24 w-full" />
           ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="sticky top-0 z-40 glass-effect border-b border-border/30">
+          <div className="flex items-center gap-3 px-4 py-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(-1)}
+              className="w-10 h-10 rounded-full"
+              aria-label="Voltar"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <h1 className="font-display text-xl font-semibold">Avaliações</h1>
+          </div>
+        </header>
+
+        <div className="px-4 py-6">
+          <div className="card-premium p-6 text-center space-y-3">
+            <AlertCircle className="w-10 h-10 text-destructive/60 mx-auto" />
+            <p className="text-sm text-muted-foreground">
+              Não foi possível carregar suas avaliações.
+            </p>
+            <Button variant="outline" onClick={fetchReviews} className="rounded-xl h-10">
+              Tentar novamente
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -206,7 +235,7 @@ export default function Reviews() {
       {/* Summary */}
       {averageRating !== null && receivedReviews.length > 0 && (
         <div className="px-4 py-4">
-          <Card className="p-4 flex items-center gap-4">
+          <div className="card-premium p-4 flex items-center gap-4">
             <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
               <span className="text-2xl font-bold text-primary">
                 {averageRating.toFixed(1)}
@@ -220,7 +249,7 @@ export default function Reviews() {
                 {receivedReviews.length} {receivedReviews.length === 1 ? 'avaliação recebida' : 'avaliações recebidas'}
               </p>
             </div>
-          </Card>
+          </div>
         </div>
       )}
 

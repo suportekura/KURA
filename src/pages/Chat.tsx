@@ -388,7 +388,7 @@ export default function Chat() {
           .insert({
             conversation_id: conversationId,
             sender_id: user.id,
-            content: '✅ Pedido confirmado! Obrigado pela compra.',
+            content: '✅ Pedido confirmado!',
           });
       }
 
@@ -469,8 +469,8 @@ export default function Chat() {
 
   if (!conversation) return null;
 
-  // Get the most recently accepted offer (findLast avoids array copy)
-  const acceptedOffer = offers.findLast(o => o.status === 'accepted') ?? null;
+  // Get the most recently accepted offer (findLast exige lib es2023; tsconfig usa es2020)
+  const acceptedOffer = [...offers].reverse().find(o => o.status === 'accepted') ?? null;
 
   const canMakeOffer = conversation.product_id &&
     conversation.product_price &&

@@ -82,7 +82,7 @@ export default function AdminCoupons() {
           return { ...c, uses_count: count ?? 0 };
         })
       );
-      setCoupons(withCounts);
+      setCoupons(withCounts as Coupon[]);
     }
     setLoading(false);
   }, []);
@@ -144,11 +144,10 @@ export default function AdminCoupons() {
       max_uses: form.unlimited ? null : (parseInt(form.max_uses) || null),
       expires_at: new Date(form.expires_at).toISOString(),
       active: form.active,
-      ...(editId ? {} : { created_by: user!.id }),
     };
     const { error } = editId
       ? await supabase.from('admin_coupons').update(payload).eq('id', editId)
-      : await supabase.from('admin_coupons').insert(payload);
+      : await supabase.from('admin_coupons').insert({ ...payload, created_by: user!.id });
     setSaving(false);
     if (error) {
       toast({ title: 'Erro ao salvar cupom', description: error.message, variant: 'destructive' });

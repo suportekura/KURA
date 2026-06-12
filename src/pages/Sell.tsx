@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Camera, Plus, X, Loader2, MapPin, AlertCircle, CheckCircle, ArrowLeft, Save, ShieldAlert, Zap, ChevronRight, Info } from 'lucide-react';
+import { Camera, Plus, X, Loader2, MapPin, AlertCircle, CheckCircle, ArrowLeft, Save, ShieldAlert, Zap, ChevronRight, Info, Clock, Flame, Rocket } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,10 +15,29 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { categories, conditions, getSizesForCategory, isSizeOptional } from '@/data/mockProducts';
+import {
+  DndContext,
+  closestCenter,
+  MouseSensor,
+  TouchSensor,
+  KeyboardSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  arrayMove,
+  useSortable,
+  sortableKeyboardCoordinates,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useToast } from '@/hooks/use-toast';
+import { useBoostCredits, type BoostType } from '@/hooks/useBoostCredits';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ImageUpload {
@@ -122,6 +141,92 @@ interface TextModerationResult {
   error?: string;
 }
 
+// Tile de imagem reordenável por drag and drop (mouse, toque com press-and-hold, teclado)
+function SortableImageTile({
+  img,
+  index,
+  submitting,
+  onRemove,
+}: {
+  img: ImageUpload;
+  index: number;
+  submitting: boolean;
+  onRemove: (id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: img.id,
+    disabled: submitting,
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        // 'manipulation' mantém o scroll horizontal nativo; o press-and-hold
+        // (delay do TouchSensor) é que inicia o drag no toque
+        touchAction: 'manipulation',
+      }}
+      {...attributes}
+      {...listeners}
+      className={cn(
+        'relative flex-shrink-0 w-28 h-28 rounded-xl overflow-hidden select-none cursor-grab active:cursor-grabbing',
+        img.moderationPassed === false && 'ring-2 ring-destructive',
+        isDragging && 'z-10 opacity-90 shadow-elevated ring-2 ring-primary'
+      )}
+    >
+      <img src={img.preview} alt={`Foto ${index + 1} do produto`} className="w-full h-full object-cover pointer-events-none" />
+
+      {/* Upload status overlay */}
+      {img.uploading && (
+        <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      )}
+
+      {/* Moderation failed overlay */}
+      {img.moderationPassed === false && (
+        <div className="absolute inset-0 bg-destructive/30 flex flex-col items-center justify-center gap-1">
+          <ShieldAlert className="w-6 h-6 text-destructive" />
+          <span className="text-[9px] text-destructive font-medium px-1 text-center">
+            Não permitido
+          </span>
+        </div>
+      )}
+
+      {img.uploaded && img.moderationPassed !== false && (
+        <div className="absolute top-2 left-2">
+          <CheckCircle className="w-5 h-5 text-primary" />
+        </div>
+      )}
+
+      {img.error && img.moderationPassed !== false && (
+        <div className="absolute inset-0 bg-destructive/20 flex items-center justify-center">
+          <AlertCircle className="w-6 h-6 text-destructive" />
+        </div>
+      )}
+
+      {!submitting && (
+        <button
+          onClick={() => onRemove(img.id)}
+          onPointerDown={(e) => e.stopPropagation()}
+          aria-label="Remover foto"
+          className="absolute top-2 right-2 w-6 h-6 rounded-full bg-background/80 flex items-center justify-center"
+        >
+          <X className="w-3 h-3" />
+        </button>
+      )}
+
+      {index === 0 && img.moderationPassed !== false && (
+        <span className="absolute bottom-2 left-2 text-[10px] bg-primary text-primary-foreground px-2 py-0.5 rounded">
+          Principal
+        </span>
+      )}
+    </div>
+  );
+}
+
 export default function Sell() {
   const { user } = useAuth();
   const { location, hasLocation, requestLocation, loading: locationLoading } = useGeolocation();
@@ -164,6 +269,14 @@ export default function Sell() {
   const [showPhotoTips, setShowPhotoTips] = useState(false);
   const [loadingProduct, setLoadingProduct] = useState(false);
   const [formData, setFormData] = useState(getInitialFormData);
+  const [selectedBoost, setSelectedBoost] = useState<BoostType | null>(null);
+  const { credits: boostCredits, totalCredits, refetch: refetchBoostCredits } = useBoostCredits();
+
+  const boostOptions: Array<{ type: BoostType; label: string; icon: typeof Clock }> = [
+    { type: '24h', label: '24 horas', icon: Clock },
+    { type: '3d', label: '3 dias', icon: Flame },
+    { type: '7d', label: '7 dias', icon: Rocket },
+  ];
 
   // Persist form data to sessionStorage on change (only for new listings)
   useEffect(() => {
@@ -311,32 +424,75 @@ export default function Sell() {
     return publicUrl;
   };
 
+  // Timeout por chamada de moderação: em vez de travar o fluxo, o anúncio
+  // cai em revisão manual (pending_review) e o crédito do usuário é preservado
+  const MODERATION_TIMEOUT_MS = 30_000;
+
+  const withModerationTimeout = <T,>(promise: Promise<T>, fallback: T): Promise<T> =>
+    Promise.race([
+      promise,
+      new Promise<T>((resolve) => setTimeout(() => resolve(fallback), MODERATION_TIMEOUT_MS)),
+    ]);
+
+  // Versão reduzida da imagem só para a IA (a original em alta segue no storage).
+  // 768px é suficiente para classificar screenshot/qualidade/conteúdo e corta o
+  // payload enviado ao Gemini de ~MB para ~100KB.
+  const MODERATION_MAX_DIMENSION = 768;
+
+  const prepareImageForModeration = async (file: File): Promise<string | null> => {
+    const objectUrl = URL.createObjectURL(file);
+    try {
+      const image = new Image();
+      image.src = objectUrl;
+      await image.decode();
+
+      const largestSide = Math.max(image.naturalWidth, image.naturalHeight);
+      const scale = Math.min(1, MODERATION_MAX_DIMENSION / largestSide);
+      const width = Math.max(1, Math.round(image.naturalWidth * scale));
+      const height = Math.max(1, Math.round(image.naturalHeight * scale));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+      ctx.drawImage(image, 0, 0, width, height);
+      return canvas.toDataURL('image/jpeg', 0.8);
+    } catch (err) {
+      // Sem versão reduzida a edge function baixa a original pela URL (fallback)
+      console.warn('[Sell] Failed to downscale image for moderation:', err);
+      return null;
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  };
+
   // Moderate image using Google AI
-  const moderateImage = async (imageUrl: string): Promise<ModerationResult> => {
+  const moderateImage = async (imageUrl: string, imageBase64?: string | null): Promise<ModerationResult> => {
+    // Erros de infra (rede, 5xx, rate limit) não são um veredito sobre o conteúdo:
+    // o anúncio vai para revisão manual em vez de ser bloqueado como "não aprovado"
+    const infraErrorResult: ModerationResult = {
+      imageApproved: false,
+      moderationFlagged: false,
+      moderationCategories: {},
+      needsManualReview: true,
+      moderationReason: 'Verificação automática indisponível. Revisão manual necessária.',
+    };
+
     try {
       const { data, error } = await supabase.functions.invoke('moderate-image', {
-        body: { imageUrl },
+        body: { imageUrl, imageBase64: imageBase64 ?? undefined },
       });
 
       if (error) {
         console.error('[Sell] Moderation API error:', error);
-        return {
-          imageApproved: false,
-          moderationFlagged: true,
-          moderationCategories: {},
-          error: error.message || 'Erro ao verificar imagem',
-        };
+        return infraErrorResult;
       }
 
       return data as ModerationResult;
     } catch (error) {
       console.error('[Sell] Moderation error:', error);
-      return {
-        imageApproved: false,
-        moderationFlagged: true,
-        moderationCategories: {},
-        error: 'Erro ao conectar com o serviço de moderação',
-      };
+      return infraErrorResult;
     }
   };
 
@@ -379,6 +535,25 @@ export default function Sell() {
     });
   };
 
+  // Drag and drop: mouse exige 6px de movimento (preserva o clique nos botões);
+  // toque exige press-and-hold de 200ms (preserva o scroll horizontal da faixa)
+  const dndSensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleImageDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setImages((prev) => {
+      const oldIndex = prev.findIndex((img) => img.id === active.id);
+      const newIndex = prev.findIndex((img) => img.id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+      return arrayMove(prev, oldIndex, newIndex);
+    });
+  };
+
   const handleSubmit = async () => {
     if (!user) {
       toast({
@@ -411,35 +586,28 @@ export default function Sell() {
     setModerating(true);
 
     try {
-      // Step 1: Upload only new images (those without url)
-      const uploadedUrls: string[] = [];
-      const newImageUrls: string[] = [];
-      
-      for (const img of images) {
-        if (img.url) {
-          // Already uploaded image (from edit mode)
-          uploadedUrls.push(img.url);
-          // Only moderate if not previously moderated
-          if (!img.moderated) {
-            newImageUrls.push(img.url);
+      // Step 1: Upload new images in parallel, preserving the display order
+      const uploadResults = await Promise.all(
+        images.map(async (img) => {
+          if (img.url) {
+            // Already uploaded image (edit mode / draft) — moderate only if not previously moderated
+            return { url: img.url, file: img.file ?? null, needsModeration: !img.moderated };
           }
-        } else if (img.file) {
-          // New image to upload
+          if (!img.file) return null;
+
           setImages((prev) =>
             prev.map((i) => (i.id === img.id ? { ...i, uploading: true } : i))
           );
 
           try {
             const url = await uploadImage(img);
-            if (url) {
-              uploadedUrls.push(url);
-              newImageUrls.push(url);
-              setImages((prev) =>
-                prev.map((i) =>
-                  i.id === img.id ? { ...i, uploading: false, uploaded: true, url } : i
-                )
-              );
-            }
+            if (!url) return null;
+            setImages((prev) =>
+              prev.map((i) =>
+                i.id === img.id ? { ...i, uploading: false, uploaded: true, url } : i
+              )
+            );
+            return { url, file: img.file, needsModeration: true };
           } catch (err) {
             setImages((prev) =>
               prev.map((i) =>
@@ -450,86 +618,112 @@ export default function Sell() {
             );
             throw err;
           }
-        }
-      }
+        })
+      );
+
+      const uploaded = uploadResults.filter(
+        (r): r is { url: string; file: File | null; needsModeration: boolean } => !!r
+      );
+      const uploadedUrls = uploaded.map((r) => r.url);
+      const imagesToModerate = uploaded.filter((r) => r.needsModeration);
 
       if (uploadedUrls.length === 0) {
         throw new Error('Nenhuma imagem foi carregada com sucesso');
       }
 
-      // Step 2: Moderate new images
+      // Step 2: Moderate all images and the text in parallel (each with its own timeout)
       let needsManualReview = false;
       const moderationReasons: string[] = [];
-      
-      if (newImageUrls.length > 0) {
-        console.log('[Sell] Moderating', newImageUrls.length, 'images...');
-        
-        for (const imageUrl of newImageUrls) {
-          const moderationResult = await moderateImage(imageUrl);
-          
-          // Check for hard rejection (flagged content)
-          if (moderationResult.moderationFlagged) {
-            setModerating(false);
-            setSubmitting(false);
-            
-            // Get specific error message based on category
-            const errorMessage = getModerationErrorMessage(
-              moderationResult.moderationCategories,
-              moderationResult.reason
-            );
-            
-            toast({
-              title: errorMessage.title,
-              description: errorMessage.description,
-              variant: 'destructive',
-            });
-            
-            // Get short error label for image overlay
-            const shortError = moderationResult.moderationCategories.screenshot ? 'Screenshot'
-              : moderationResult.moderationCategories.heavily_edited ? 'Muito editada'
-              : moderationResult.moderationCategories.not_product ? 'Não é produto'
-              : moderationResult.moderationCategories.low_quality ? 'Baixa qualidade'
-              : 'Não permitido';
-            
-            setImages((prev) =>
-              prev.map((i) =>
-                i.url === imageUrl
-                  ? { ...i, moderated: true, moderationPassed: false, error: shortError }
-                  : i
-              )
-            );
-            
-            return;
-          }
-          
-          // Check for low confidence (needs manual review)
-          if (moderationResult.needsManualReview) {
-            needsManualReview = true;
-            if (moderationResult.moderationReason) moderationReasons.push(moderationResult.moderationReason);
-            console.log('[Sell] Image needs manual review due to low confidence:', moderationResult.confidenceScore);
-          }
-          
-          // Mark image as passed moderation
-          setImages((prev) =>
-            prev.map((i) =>
-              i.url === imageUrl
-                ? { ...i, moderated: true, moderationPassed: true }
-                : i
-            )
-          );
-        }
-        
-        console.log('[Sell] Image moderation complete, needsManualReview:', needsManualReview);
+
+      const imageTimeoutFallback: ModerationResult = {
+        imageApproved: false,
+        moderationFlagged: false,
+        moderationCategories: {},
+        needsManualReview: true,
+        moderationReason: 'Tempo limite na verificação automática da imagem. Revisão manual necessária.',
+      };
+
+      // Texto segue a semântica atual de falha do moderateText: auto-aprova
+      const textTimeoutFallback: TextModerationResult = {
+        textApproved: true,
+        moderationFlagged: false,
+        moderationCategories: {},
+        needsManualReview: false,
+      };
+
+      console.log('[Sell] Moderating', imagesToModerate.length, 'images + text in parallel...');
+
+      const [imageModerations, textModerationResult] = await Promise.all([
+        Promise.all(
+          imagesToModerate.map(async ({ url, file }) => {
+            // Versão reduzida vai no body; sem ela a function baixa a original pela URL
+            const downscaled = file ? await prepareImageForModeration(file) : null;
+            const result = await withModerationTimeout(moderateImage(url, downscaled), imageTimeoutFallback);
+            return { url, result };
+          })
+        ),
+        withModerationTimeout(
+          moderateText(formData.title.trim(), formData.description.trim()),
+          textTimeoutFallback
+        ),
+      ]);
+
+      // Hard rejection: mark every flagged image and abort with the first reason
+      const flaggedImages = imageModerations.filter(({ result }) => result.moderationFlagged);
+      if (flaggedImages.length > 0) {
+        setModerating(false);
+        setSubmitting(false);
+
+        const firstResult = flaggedImages[0].result;
+        const errorMessage = getModerationErrorMessage(
+          firstResult.moderationCategories,
+          firstResult.reason
+        );
+
+        toast({
+          title: errorMessage.title,
+          description: errorMessage.description,
+          variant: 'destructive',
+        });
+
+        const getShortError = (categories: Record<string, boolean>) =>
+          categories.screenshot ? 'Screenshot'
+            : categories.heavily_edited ? 'Muito editada'
+            : categories.not_product ? 'Não é produto'
+            : categories.low_quality ? 'Baixa qualidade'
+            : 'Não permitido';
+
+        setImages((prev) =>
+          prev.map((i) => {
+            const flaggedEntry = i.url ? flaggedImages.find(({ url }) => url === i.url) : undefined;
+            if (!flaggedEntry) return i;
+            return {
+              ...i,
+              moderated: true,
+              moderationPassed: false,
+              error: getShortError(flaggedEntry.result.moderationCategories),
+            };
+          })
+        );
+
+        return;
       }
 
-      // Step 2.5: Moderate text (title and description)
-      console.log('[Sell] Moderating text content...');
-      const textModerationResult = await moderateText(
-        formData.title.trim(),
-        formData.description.trim()
-      );
+      // Aggregate manual review flags and mark images as approved
+      for (const { url, result } of imageModerations) {
+        if (result.needsManualReview) {
+          needsManualReview = true;
+          if (result.moderationReason) moderationReasons.push(result.moderationReason);
+          console.log('[Sell] Image needs manual review due to low confidence:', result.confidenceScore);
+        }
+        setImages((prev) =>
+          prev.map((i) =>
+            i.url === url ? { ...i, moderated: true, moderationPassed: true } : i
+          )
+        );
+      }
 
-      // Check for hard rejection
+      // Text moderation: hard rejection
       if (textModerationResult.moderationFlagged) {
         setModerating(false);
         setSubmitting(false);
@@ -556,7 +750,7 @@ export default function Sell() {
         console.log('[Sell] Text needs manual review due to low confidence:', textModerationResult.confidenceScore);
       }
 
-      console.log('[Sell] Text content passed moderation');
+      console.log('[Sell] Moderation complete, needsManualReview:', needsManualReview);
       setModerating(false);
 
       // Step 3: Save product to database
@@ -624,18 +818,52 @@ export default function Sell() {
           seller_city: location?.city,
           seller_state: location?.state,
         };
-        
-        const { error: insertError } = await supabase.from('products').insert(insertData as any);
+
+        const { data: createdProduct, error: insertError } = await supabase
+          .from('products')
+          .insert(insertData as any)
+          .select('id')
+          .single();
 
         if (insertError) {
           console.error('[Sell] Insert error:', insertError);
           throw new Error('Erro ao publicar produto');
         }
 
+        // Apply boost from balance, if selected. The RPC debits the credit and
+        // creates the boost in a single transaction (no debit without boost).
+        // It requires status = 'active', so listings sent to manual review keep the credit.
+        let boostApplied = false;
+        if (selectedBoost && createdProduct?.id && !needsManualReview) {
+          const { data: boostData, error: boostError } = await supabase.rpc('activate_product_boost', {
+            p_product_id: createdProduct.id,
+            p_boost_type: selectedBoost,
+          });
+
+          const boostResult = boostData as unknown as { success: boolean; error?: string } | null;
+          if (boostError || !boostResult?.success) {
+            console.error('[Sell] Boost activation error:', boostError || boostResult?.error);
+            toast({
+              title: 'Anúncio publicado, mas o impulso não foi aplicado',
+              description: 'Seu crédito não foi debitado. Você pode impulsionar em Meus Anúncios.',
+            });
+          } else {
+            boostApplied = true;
+            refetchBoostCredits();
+          }
+        }
+
         if (needsManualReview) {
           toast({
             title: 'Anúncio enviado para revisão 🔍',
-            description: 'Seu anúncio será revisado pela nossa equipe e ficará disponível em breve.',
+            description: selectedBoost
+              ? 'Seu anúncio será revisado pela nossa equipe. O impulso não foi debitado — aplique em Meus Anúncios após a aprovação.'
+              : 'Seu anúncio será revisado pela nossa equipe e ficará disponível em breve.',
+          });
+        } else if (boostApplied) {
+          toast({
+            title: 'Produto publicado e impulsionado! 🚀',
+            description: 'Seu anúncio já está disponível no topo dos resultados.',
           });
         } else {
           toast({
@@ -805,74 +1033,36 @@ export default function Sell() {
               </ul>
             </div>
           )}
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
-            {images.map((img, index) => (
-              <div
-                key={img.id}
-                className={cn(
-                  "relative flex-shrink-0 w-28 h-28 rounded-xl overflow-hidden",
-                  img.moderationPassed === false && "ring-2 ring-destructive"
-                )}
-              >
-                <img src={img.preview} alt="" className="w-full h-full object-cover" />
-                
-                {/* Upload status overlay */}
-                {img.uploading && (
-                  <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
-                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                  </div>
-                )}
-                
-                {/* Moderation failed overlay */}
-                {img.moderationPassed === false && (
-                  <div className="absolute inset-0 bg-destructive/30 flex flex-col items-center justify-center gap-1">
-                    <ShieldAlert className="w-6 h-6 text-destructive" />
-                    <span className="text-[9px] text-destructive font-medium px-1 text-center">
-                      Não permitido
-                    </span>
-                  </div>
-                )}
-                
-                {img.uploaded && img.moderationPassed !== false && (
-                  <div className="absolute top-2 left-2">
-                    <CheckCircle className="w-5 h-5 text-primary" />
-                  </div>
-                )}
-                
-                {img.error && img.moderationPassed !== false && (
-                  <div className="absolute inset-0 bg-destructive/20 flex items-center justify-center">
-                    <AlertCircle className="w-6 h-6 text-destructive" />
-                  </div>
-                )}
+          <DndContext
+            sensors={dndSensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleImageDragEnd}
+          >
+            <SortableContext items={images.map((img) => img.id)} strategy={horizontalListSortingStrategy}>
+              <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
+                {images.map((img, index) => (
+                  <SortableImageTile
+                    key={img.id}
+                    img={img}
+                    index={index}
+                    submitting={submitting}
+                    onRemove={removeImage}
+                  />
+                ))}
 
-                {!submitting && (
+                {images.length < 5 && (
                   <button
-                    onClick={() => removeImage(img.id)}
-                    className="absolute top-2 right-2 w-6 h-6 rounded-full bg-background/80 flex items-center justify-center"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={submitting}
+                    className="flex-shrink-0 w-28 h-28 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-olive-warm/50 transition-colors disabled:opacity-50"
                   >
-                    <X className="w-3 h-3" />
+                    <Camera className="w-6 h-6 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">Adicionar</span>
                   </button>
                 )}
-                
-                {index === 0 && img.moderationPassed !== false && (
-                  <span className="absolute bottom-2 left-2 text-[10px] bg-primary text-primary-foreground px-2 py-0.5 rounded">
-                    Principal
-                  </span>
-                )}
               </div>
-            ))}
-            
-            {images.length < 5 && (
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={submitting}
-                className="flex-shrink-0 w-28 h-28 rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-olive-warm/50 transition-colors disabled:opacity-50"
-              >
-                <Camera className="w-6 h-6 text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Adicionar</span>
-              </button>
-            )}
-          </div>
+            </SortableContext>
+          </DndContext>
           
           <input
             ref={fileInputRef}
@@ -884,7 +1074,7 @@ export default function Sell() {
           />
           
           <p className="text-xs text-muted-foreground">
-            Adicione até 5 fotos. A primeira será a principal. Máx. 5MB por foto.
+            Adicione até 5 fotos e arraste para reordenar — a primeira será a capa. Máx. 5MB por foto.
           </p>
         </div>
 
@@ -1062,27 +1252,77 @@ export default function Sell() {
           </div>
         </div>
 
-        {/* Boost Nudge - subtle upsell */}
+        {/* Boost: aplicar crédito do saldo ou upsell quando não há créditos */}
         {!isEditMode && (
-          <div
-            className="relative overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/[0.04] to-transparent p-4 cursor-pointer group transition-all hover:border-primary/25"
-            onClick={() => navigate('/boosts')}
-          >
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                <Zap className="w-4.5 h-4.5 text-primary" />
+          totalCredits > 0 && boostCredits ? (
+            <div className="rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/[0.04] to-transparent p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Zap className="w-4.5 h-4.5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground leading-snug">
+                    Impulsionar este anúncio
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                    Você tem {totalCredits} {totalCredits === 1 ? 'impulso disponível' : 'impulsos disponíveis'}. Use um agora e apareça no topo.
+                  </p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground leading-snug">
-                  Quer vender mais rápido?
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-                  Anúncios com destaque recebem até 5x mais visualizações. Conheça nossos planos de impulso.
-                </p>
+              <div className="grid grid-cols-3 gap-2">
+                {boostOptions.map((option) => {
+                  const available = boostCredits[option.type];
+                  const isSelected = selectedBoost === option.type;
+                  const Icon = option.icon;
+                  return (
+                    <button
+                      key={option.type}
+                      type="button"
+                      disabled={submitting || available <= 0}
+                      onClick={() => setSelectedBoost(isSelected ? null : option.type)}
+                      className={cn(
+                        'p-3 rounded-xl text-center transition-all disabled:opacity-40 tap-feedback',
+                        isSelected
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-card border border-border/50 hover:border-primary/50'
+                      )}
+                    >
+                      <Icon className={cn('w-4 h-4 mx-auto mb-1', isSelected ? 'text-primary-foreground' : 'text-primary')} />
+                      <p className="text-xs font-medium leading-tight">{option.label}</p>
+                      <p className={cn('text-[10px] mt-0.5', isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
+                        {available}× {available === 1 ? 'disponível' : 'disponíveis'}
+                      </p>
+                    </button>
+                  );
+                })}
               </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground/60 flex-shrink-0 mt-1 group-hover:text-primary transition-colors" />
+              {selectedBoost && (
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  O impulso de {boostOptions.find(o => o.type === selectedBoost)?.label} será debitado do seu saldo e aplicado assim que o anúncio for publicado.
+                </p>
+              )}
             </div>
-          </div>
+          ) : (
+            <div
+              className="relative overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/[0.04] to-transparent p-4 cursor-pointer group transition-all hover:border-primary/25"
+              onClick={() => navigate('/boosts')}
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <Zap className="w-4.5 h-4.5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground leading-snug">
+                    Quer vender mais rápido?
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                    Anúncios com destaque recebem até 5x mais visualizações. Conheça nossos planos de impulso.
+                  </p>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground/60 flex-shrink-0 mt-1 group-hover:text-primary transition-colors" />
+              </div>
+            </div>
+          )
         )}
 
         {/* Submit Button */}

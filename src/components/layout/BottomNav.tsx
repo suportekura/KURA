@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Home, Search, PlusCircle, MessageCircle, User } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useUnreadMessagesCount } from '@/hooks/useUnreadMessagesCount';
 
 const navItems = [
   { icon: Home, label: 'Início', path: '/' },
@@ -13,6 +14,7 @@ const navItems = [
 
 export function BottomNav() {
   const location = useLocation();
+  const { unreadCount } = useUnreadMessagesCount();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 glass-effect border-t border-border/50 safe-area-bottom">
@@ -35,13 +37,21 @@ export function BottomNav() {
                 transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                 className="flex flex-col items-center gap-1"
               >
-                <div>
-                  <Icon 
+                <div className="relative">
+                  <Icon
                     className={cn(
                       'w-6 h-6 transition-colors duration-150',
-                    )} 
+                    )}
                     strokeWidth={isActive ? 2.5 : 2}
                   />
+                  {item.path === '/messages' && unreadCount > 0 && (
+                    <span
+                      aria-label={`${unreadCount} ${unreadCount === 1 ? 'mensagem não lida' : 'mensagens não lidas'}`}
+                      className="absolute -top-1.5 -right-2 min-w-[18px] h-[18px] px-1 bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center"
+                    >
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
                 </div>
                 <span className="text-[10px] font-medium">{item.label}</span>
               </motion.div>
