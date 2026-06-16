@@ -16,7 +16,7 @@ import {
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/hooks/useAuth';
 import { useFavoritesCount } from '@/hooks/useFavorites';
-import { useUserListingsCount, useUserProfile } from '@/hooks/useUserProfile';
+import { useUserActiveSalesCount, useUserListingsCount, useUserProfile } from '@/hooks/useUserProfile';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { calculateWeightedRating } from '@/components/reputation/ReputationBadge';
@@ -95,6 +95,7 @@ export default function Profile() {
   const { toast } = useToast();
   const favoritesCount = useFavoritesCount();
   const listingsCount = useUserListingsCount();
+  const activeSalesCount = useUserActiveSalesCount();
   const [uploading, setUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [showPublicProfileInfo, setShowPublicProfileInfo] = useState(false);
@@ -543,6 +544,8 @@ export default function Profile() {
                 label="Minhas vendas"
                 iconBg="bg-muted"
                 iconColor="text-background dark:text-muted-foreground"
+                badge={activeSalesCount}
+                badgeColor="bg-muted text-background dark:text-muted-foreground"
                 href="/my-sales"
               />
               <MenuRow

@@ -184,6 +184,31 @@ export function useUserPurchasesCount() {
   return count;
 }
 
+// Vendas que exigem atencao do vendedor: pendentes + ativos (confirmado/em transito).
+// Ignora finalizados (delivered/cancelled).
+export function useUserActiveSalesCount() {
+  const { user } = useAuth();
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) { setCount(0); return; }
+
+    const fetchCount = async () => {
+      const { count: c, error } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('seller_id', user.id)
+        .in('status', ['pending', 'confirmed', 'in_transit']);
+
+      if (!error && c !== null) setCount(c);
+    };
+
+    fetchCount();
+  }, [user]);
+
+  return count;
+}
+
 export function useUserReviewsCount() {
   const { user } = useAuth();
   const [count, setCount] = useState(0);
