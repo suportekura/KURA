@@ -97,7 +97,13 @@ Deno.test("erro/resposta inválida -> revisão (fail-safe)", () => {
   assertEquals(parseCategoryScores({} as OpenAIModerationResponse), null);
   assertEquals(parseCategoryScores({ results: [] }), null);
 
-  // evaluate com null/garbage cai em revisão.
+  // evaluate com null cai em revisão.
   assert(evaluateImageModeration(null).needsManualReview);
-  assert(evaluateImageModeration(parseCategoryScores({ results: [{}] } as OpenAIModerationResponse)).needsManualReview);
+
+  // results[0] presente, porém sem category_scores -> parse null -> revisão.
+  const noScores = {
+    results: [{ flagged: false, categories: {} }],
+  } as unknown as OpenAIModerationResponse;
+  assertEquals(parseCategoryScores(noScores), null);
+  assert(evaluateImageModeration(parseCategoryScores(noScores)).needsManualReview);
 });
