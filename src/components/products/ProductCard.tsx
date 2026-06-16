@@ -128,11 +128,19 @@ export function ProductCard({ product, index = 0 }: ProductCardProps) {
             )}
 
             {product.status === 'reserved' && (
-              <Badge 
+              <Badge
                 className="absolute bottom-2 right-2 bg-primary/90 backdrop-blur-sm text-primary-foreground border-0 text-[10px] px-1.5 py-0.5"
               >
                 Em negociação
               </Badge>
+            )}
+
+            {product.status === 'sold' && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/60 backdrop-blur-[1px]">
+                <span className="-rotate-12 rounded-full bg-destructive/90 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-destructive-foreground shadow-lg">
+                  Vendido
+                </span>
+              </div>
             )}
           </div>
 

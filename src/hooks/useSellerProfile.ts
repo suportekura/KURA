@@ -94,9 +94,18 @@ export function useSellerProfile(sellerId: string | undefined) {
         .eq('seller_id', sellerId)
         .in('status', ['active', 'reserved']);
 
+      // Conta vendidos ao vivo. profiles.sold_count nao e mantido por nenhum
+      // trigger (fica sempre 0), entao contamos os produtos 'sold' direto —
+      // mesmo padrao usado no perfil proprio (Profile.tsx).
+      const { count: soldCount } = await supabase
+        .from('products')
+        .select('*', { count: 'exact', head: true })
+        .eq('seller_id', sellerId)
+        .eq('status', 'sold');
+
       setStats({
         activeProducts: activeCount || 0,
-        soldProducts: profileData.sold_count || 0,
+        soldProducts: soldCount || 0,
         reviewsCount: profileData.seller_reviews_count || 0,
         followersCount: profileData.followers_count || 0,
         sellerReviewsCount: profileData.seller_reviews_count || 0,
@@ -171,16 +180,29 @@ export function useFollowSeller(sellerId: string | undefined) {
   return { isFollowing, loading, toggleFollow };
 }
 
-export function useSellerProducts(sellerId: string | undefined, filters?: {
-  search?: string;
-  category?: string;
-  brand?: string;
-  size?: string;
-  priceMin?: number;
-  priceMax?: number;
-}) {
+// Colunas necessarias para o ProductCard no perfil. Evitamos `select('*')`
+// de proposito para nao trafegar seller_latitude/seller_longitude ao cliente
+// (LGPD — coordenadas nao devem ser expostas em respostas publicas).
+const SELLER_PRODUCT_COLUMNS =
+  'id, title, description, price, original_price, size, brand, category, condition, status, images, seller_id, seller_city, created_at, gender';
+
+export function useSellerProducts(
+  sellerId: string | undefined,
+  filters?: {
+    search?: string;
+    category?: string;
+    brand?: string;
+    size?: string;
+    priceMin?: number;
+    priceMax?: number;
+  },
+  statuses: string[] = ['active', 'reserved'],
+) {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Estabiliza a dependencia do array de status entre renders.
+  const statusKey = statuses.join(',');
 
   const fetchProducts = useCallback(async () => {
     if (!sellerId) {
@@ -189,12 +211,12 @@ export function useSellerProducts(sellerId: string | undefined, filters?: {
     }
 
     setLoading(true);
-    
+
     let query = supabase
       .from('products')
-      .select('*')
+      .select(SELLER_PRODUCT_COLUMNS)
       .eq('seller_id', sellerId)
-      .in('status', ['active', 'reserved'])
+      .in('status', statusKey.split(','))
       .order('created_at', { ascending: false });
 
     if (filters?.search) {
@@ -222,7 +244,7 @@ export function useSellerProducts(sellerId: string | undefined, filters?: {
       setProducts(data);
     }
     setLoading(false);
-  }, [sellerId, filters?.search, filters?.category, filters?.brand, filters?.size, filters?.priceMin, filters?.priceMax]);
+  }, [sellerId, statusKey, filters?.search, filters?.category, filters?.brand, filters?.size, filters?.priceMin, filters?.priceMax]);
 
   useEffect(() => {
     fetchProducts();
