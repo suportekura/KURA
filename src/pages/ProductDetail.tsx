@@ -49,6 +49,7 @@ export default function ProductDetail() {
   // Queue support
   const productStatus = realProduct?.status;
   const isReserved = productStatus === 'reserved';
+  const isSold = productStatus === 'sold';
   const isSeller = user?.id === realProduct?.sellerId;
   const { queueCount, userPosition, userInQueue, userIsPromoted, minutesRemaining, joinQueue, isJoining, leaveQueue, isLeaving } = useProductQueue(id, productStatus);
 
@@ -386,7 +387,34 @@ export default function ProductDetail() {
 
       {/* Bottom Action Bar */}
       <div className="fixed bottom-0 left-0 right-0 p-4 glass-effect border-t border-border/30 lg:max-w-6xl lg:mx-auto lg:left-1/2 lg:-translate-x-1/2">
-        {isReserved && !isSeller ? (
+        {isSold ? (
+          <div className="flex gap-3">
+            {!isSeller && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="w-14 h-14 rounded-xl border-primary text-primary hover:bg-primary/5 flex-shrink-0"
+                    onClick={async () => {
+                      if (!product?.sellerId) return;
+                      setStartingChat(true);
+                      await startConversation(product.sellerId, product.id, `Olá! Vi que o produto "${product.title}" já foi vendido. Você tem algo parecido?`);
+                      setStartingChat(false);
+                    }}
+                    disabled={startingChat}
+                  >
+                    {startingChat ? <Loader2 className="w-5 h-5 animate-spin" /> : <MessageCircle className="w-5 h-5" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top"><p>Conversar com vendedor</p></TooltipContent>
+              </Tooltip>
+            )}
+            <Button className="flex-1 h-14 rounded-xl bg-muted text-muted-foreground cursor-default" disabled>
+              Produto vendido
+            </Button>
+          </div>
+        ) : isReserved && !isSeller ? (
           <div className="flex gap-3">
             <Tooltip>
               <TooltipTrigger asChild>
