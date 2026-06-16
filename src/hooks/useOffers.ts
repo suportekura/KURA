@@ -29,11 +29,13 @@ export function useOffers(conversationId: string | undefined) {
 
     const fetchOffers = async () => {
       try {
+        // A RLS ja restringe ofertas as conversas do usuario (participant_1/2).
+        // Nao filtrar por receiver_id: a coluna nao existe na tabela offers e
+        // fazia a query falhar, zerando as ofertas ao reentrar no chat.
         const { data, error } = await supabase
           .from('offers')
           .select('*')
           .eq('conversation_id', conversationId)
-          .or(`sender_id.eq.${user?.id},receiver_id.eq.${user?.id}`)
           .order('created_at', { ascending: true });
 
         if (error) throw error;

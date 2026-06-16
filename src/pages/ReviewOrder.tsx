@@ -69,7 +69,7 @@ export default function ReviewOrder() {
             description: 'Este pedido não existe ou não pode ser avaliado.',
             variant: 'destructive',
           });
-          navigate(isSellerReviewingBuyer ? '/my-sales' : '/my-purchases');
+          navigate(isSellerReviewingBuyer ? '/my-sales' : '/my-purchases', { replace: true });
           return;
         }
 
@@ -86,7 +86,7 @@ export default function ReviewOrder() {
             title: 'Já avaliado',
             description: 'Você já avaliou este pedido.',
           });
-          navigate(isSellerReviewingBuyer ? '/my-sales' : '/my-purchases');
+          navigate(isSellerReviewingBuyer ? '/my-sales' : '/my-purchases', { replace: true });
           return;
         }
 
@@ -152,7 +152,7 @@ export default function ReviewOrder() {
         description: 'Obrigado pelo seu feedback.',
       });
 
-      navigate(isSellerReviewingBuyer ? '/my-sales' : '/my-purchases');
+      navigate(isSellerReviewingBuyer ? '/my-sales' : '/my-purchases', { replace: true });
     } catch (err) {
       console.error('[ReviewOrder] Submit error:', err);
       toast({

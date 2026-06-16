@@ -1272,14 +1272,23 @@ export default function Sell() {
               <div className="grid grid-cols-3 gap-2">
                 {boostOptions.map((option) => {
                   const available = boostCredits[option.type];
+                  const hasCredit = available > 0;
                   const isSelected = selectedBoost === option.type;
                   const Icon = option.icon;
                   return (
                     <button
                       key={option.type}
                       type="button"
-                      disabled={submitting || available <= 0}
-                      onClick={() => setSelectedBoost(isSelected ? null : option.type)}
+                      disabled={submitting}
+                      // Sem crédito desse tipo: leva para a compra do impulso (aba já selecionada)
+                      onClick={() =>
+                        hasCredit
+                          ? setSelectedBoost(isSelected ? null : option.type)
+                          : navigate(`/boosts?type=${option.type}`)
+                      }
+                      aria-label={hasCredit
+                        ? `Impulsionar por ${option.label}`
+                        : `Comprar impulso de ${option.label}`}
                       className={cn(
                         'p-3 rounded-xl text-center transition-all disabled:opacity-40 tap-feedback',
                         isSelected
@@ -1289,9 +1298,13 @@ export default function Sell() {
                     >
                       <Icon className={cn('w-4 h-4 mx-auto mb-1', isSelected ? 'text-primary-foreground' : 'text-primary')} />
                       <p className="text-xs font-medium leading-tight">{option.label}</p>
-                      <p className={cn('text-[10px] mt-0.5', isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
-                        {available}× {available === 1 ? 'disponível' : 'disponíveis'}
-                      </p>
+                      {hasCredit ? (
+                        <p className={cn('text-[10px] mt-0.5', isSelected ? 'text-primary-foreground/80' : 'text-muted-foreground')}>
+                          {available}× {available === 1 ? 'disponível' : 'disponíveis'}
+                        </p>
+                      ) : (
+                        <p className="text-[10px] mt-0.5 text-primary font-medium">Comprar</p>
+                      )}
                     </button>
                   );
                 })}

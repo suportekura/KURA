@@ -184,6 +184,15 @@ export default function Boosts() {
     fetchProduct();
   }, [searchParams, user]);
 
+  // Pré-seleciona a aba do tipo de impulso vindo de ?type= (ex.: ao vir do /sell
+  // ao clicar num impulso que o usuário ainda não possui)
+  useEffect(() => {
+    const type = searchParams.get('type');
+    if (type === '24h' || type === '3d' || type === '7d') {
+      setActiveTab(type);
+    }
+  }, [searchParams]);
+
   // Fetch available boost credits
   useEffect(() => {
     if (!user) return;
