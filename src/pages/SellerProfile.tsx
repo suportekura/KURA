@@ -60,6 +60,7 @@ export default function SellerProfile() {
   }), [search, category, size, priceRange]);
 
   const { products, loading: productsLoading, refetch: refetchProducts } = useSellerProducts(sellerId, filters);
+  const { products: soldProducts, loading: soldLoading } = useSellerProducts(sellerId, undefined, ['sold']);
 
   // Fetch seller's active coupons if enabled
   const [sellerCoupons, setSellerCoupons] = useState<any[]>([]);
@@ -159,6 +160,31 @@ export default function SellerProfile() {
   }
 
   const initials = profile.display_name?.slice(0, 2).toUpperCase() || 'US';
+
+  // Mapeia uma linha de produto do banco para o formato esperado pelo ProductCard.
+  // Usado tanto na aba "à venda" quanto na aba "vendidos".
+  const toCardProduct = (product: any) => ({
+    id: product.id,
+    title: product.title,
+    description: product.description,
+    price: product.price,
+    originalPrice: product.original_price,
+    size: product.size,
+    brand: product.brand,
+    category: product.category,
+    condition: product.condition,
+    images: product.images,
+    sellerId: product.seller_id,
+    sellerName: profile.display_name || 'Vendedor',
+    sellerAvatar: profile.shop_logo_url || profile.avatar_url || defaultSellerAvatar,
+    sellerReviewsCount: stats?.sellerReviewsCount || 0,
+    sellerReviewsSum: stats?.sellerReviewsSum || 0,
+    distance: 0,
+    city: product.seller_city || '',
+    createdAt: new Date(product.created_at),
+    gender: product.gender as 'M' | 'F' | 'U',
+    status: product.status,
+  });
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -483,28 +509,7 @@ export default function SellerProfile() {
                 {products.map((product, index) => (
                   <ProductCard
                     key={product.id}
-                    product={{
-                      id: product.id,
-                      title: product.title,
-                      description: product.description,
-                      price: product.price,
-                      originalPrice: product.original_price,
-                      size: product.size,
-                      brand: product.brand,
-                      category: product.category,
-                      condition: product.condition,
-                      images: product.images,
-                      sellerId: product.seller_id,
-                      sellerName: profile.display_name || 'Vendedor',
-                      sellerAvatar: profile.shop_logo_url || profile.avatar_url || defaultSellerAvatar,
-                      sellerReviewsCount: stats?.sellerReviewsCount || 0,
-                      sellerReviewsSum: stats?.sellerReviewsSum || 0,
-                      distance: 0,
-                      city: product.seller_city || '',
-                      createdAt: new Date(product.created_at),
-                      gender: product.gender as 'M' | 'F' | 'U',
-                      status: product.status,
-                    }}
+                    product={toCardProduct(product)}
                     index={index}
                   />
                 ))}
@@ -522,11 +527,29 @@ export default function SellerProfile() {
         )}
 
         {activeTab === 'sold' && (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">
-              {stats?.soldProducts || 0} produtos vendidos
-            </p>
-          </div>
+          <>
+            {soldLoading ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3 lg:gap-3">
+                {[...Array(6)].map((_, i) => (
+                  <Skeleton key={i} className="aspect-square rounded-xl" />
+                ))}
+              </div>
+            ) : soldProducts.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-3 lg:gap-3">
+                {soldProducts.map((product, index) => (
+                  <ProductCard
+                    key={product.id}
+                    product={toCardProduct(product)}
+                    index={index}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground">Nenhum produto vendido ainda</p>
+              </div>
+            )}
+          </>
         )}
 
         {activeTab === 'reviews' && sellerId && (
