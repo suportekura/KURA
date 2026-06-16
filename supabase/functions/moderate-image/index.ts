@@ -146,6 +146,45 @@ The "confidence" field should indicate how certain you are about your assessment
 
 Set "flagged" to true if ANY category is true. Be strict - only allow clear, real photos of clothing items and accessories.`;
 
+// Schema de saída estruturada. Com responseMimeType=application/json o Gemini
+// devolve JSON puro (sem cercas ```json) seguindo exatamente este formato,
+// tornando o parse determinístico.
+const MODERATION_RESPONSE_SCHEMA = {
+  type: 'object',
+  properties: {
+    flagged: { type: 'boolean' },
+    confidence: { type: 'number' },
+    categories: {
+      type: 'object',
+      properties: {
+        screenshot: { type: 'boolean' },
+        heavily_edited: { type: 'boolean' },
+        not_product: { type: 'boolean' },
+        low_quality: { type: 'boolean' },
+        sexual: { type: 'boolean' },
+        'sexual/minors': { type: 'boolean' },
+        violence: { type: 'boolean' },
+        'violence/graphic': { type: 'boolean' },
+        'self-harm': { type: 'boolean' },
+        'self-harm/intent': { type: 'boolean' },
+        'self-harm/instructions': { type: 'boolean' },
+        illicit: { type: 'boolean' },
+        'illicit/violent': { type: 'boolean' },
+        hate: { type: 'boolean' },
+        'hate/threatening': { type: 'boolean' },
+      },
+      required: [
+        'screenshot', 'heavily_edited', 'not_product', 'low_quality',
+        'sexual', 'sexual/minors', 'violence', 'violence/graphic',
+        'self-harm', 'self-harm/intent', 'self-harm/instructions',
+        'illicit', 'illicit/violent', 'hate', 'hate/threatening',
+      ],
+    },
+    reason: { type: 'string' },
+  },
+  required: ['flagged', 'confidence', 'categories'],
+};
+
 serve(async (req) => {
   // Handle CORS preflight requests
   const preflightResponse = handleCorsPreflightRequest(req);
@@ -306,7 +345,25 @@ serve(async (req) => {
                 { inline_data: { mime_type: imageMimeType, data: base64Data } },
               ],
             }],
-            generationConfig: { temperature: 0, maxOutputTokens: 2000 },
+            generationConfig: {
+              temperature: 0,
+              // No Gemini 2.5 Flash maxOutputTokens cobre thinking + saída visível.
+              // thinkingBudget limita o thinking (512) garantindo folga para o JSON.
+              maxOutputTokens: 4000,
+              thinkingConfig: { thinkingBudget: 512 },
+              // Saída estruturada: JSON puro, sem cercas markdown -> parse determinístico.
+              responseMimeType: 'application/json',
+              responseSchema: MODERATION_RESPONSE_SCHEMA,
+            },
+            // Desliga os filtros nativos do Google. A moderação é responsabilidade do
+            // nosso prompt/categorias; sem isto, fotos de moda praia/roupa íntima/corpo
+            // podem disparar o filtro do Gemini -> candidate sem content -> revisão manual.
+            safetySettings: [
+              { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+              { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+              { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+              { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+            ],
           }),
         });
 
@@ -361,9 +418,27 @@ serve(async (req) => {
     const responseData = await moderationResponse.json();
     console.log('[moderate-image] Google AI response:', JSON.stringify(responseData));
 
-    // Extract the content from the response
-    const content = responseData.candidates?.[0]?.content?.parts?.[0]?.text;
-    
+    const candidate = responseData.candidates?.[0];
+    const finishReason = candidate?.finishReason;
+
+    // finishReason != STOP = resposta incompleta. Logamos a causa explicitamente em vez
+    // de cair silenciosamente em revisão manual sem saber o porquê.
+    if (finishReason && finishReason !== 'STOP') {
+      const diagnosis =
+        finishReason === 'MAX_TOKENS'
+          ? '— saída truncada; aumente maxOutputTokens ou reduza thinkingBudget'
+          : finishReason === 'SAFETY' || finishReason === 'PROHIBITED_CONTENT'
+            ? '— Gemini bloqueou pelos filtros nativos; verifique safetySettings'
+            : '';
+      console.error('[moderate-image] Unexpected finishReason:', finishReason, diagnosis,
+        'promptFeedback:', JSON.stringify(responseData.promptFeedback ?? null));
+    }
+
+    // Pega a primeira part com texto (defensivo: thinking pode emitir uma part antes)
+    const content = candidate?.content?.parts?.find(
+      (p: { text?: string }) => typeof p?.text === 'string'
+    )?.text;
+
     if (!content) {
       console.error('[moderate-image] No content in response');
       return new Response(
