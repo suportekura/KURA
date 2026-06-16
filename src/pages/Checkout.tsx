@@ -445,6 +445,19 @@ export default function Checkout() {
             sender_id: user.id,
             content: `🎉 Pedido confirmado${discountMsg}! Olá, acabei de confirmar a compra. Podemos combinar o local e horário para retirada?`,
           });
+
+        // Se o comprador deixou observacao no pedido, envia como mensagem para o
+        // vendedor ver no chat (antes essa info ficava so no pedido, sem uso).
+        const orderNotes = deliveryNotes?.trim();
+        if (orderNotes) {
+          await supabase
+            .from('messages')
+            .insert({
+              conversation_id: conversationId,
+              sender_id: user.id,
+              content: `📝 Observação do pedido: ${orderNotes}`,
+            });
+        }
       }
 
       toast({
@@ -554,6 +567,18 @@ export default function Checkout() {
               sender_id: user.id,
               content: '🎉 Pedido confirmado! Oferta aceita. Podemos combinar o local e horário para a entrega?',
             });
+
+          // Observacao do pedido (se houver) vira mensagem para o vendedor ver no chat
+          const orderNotes = deliveryNotes?.trim();
+          if (orderNotes) {
+            await supabase
+              .from('messages')
+              .insert({
+                conversation_id: existingConv.id,
+                sender_id: user.id,
+                content: `📝 Observação do pedido: ${orderNotes}`,
+              });
+          }
         }
 
         if (existingConv?.id) {
