@@ -52,6 +52,29 @@ function pct(score: number): string {
 }
 
 /**
+ * Categoria de imagem com o maior score (e o score). Usada para informar ao
+ * client qual a categoria dominante (mensagem do modal de revisão). Scores
+ * ausentes/inválidos -> { category: "", score: 0 }.
+ */
+export function dominantCategory(
+  scores: Record<string, number> | null | undefined,
+): { category: string; score: number } {
+  let category = "";
+  let score = 0;
+  if (scores && typeof scores === "object") {
+    for (const cat of IMAGE_CATEGORIES) {
+      const v = scores[cat];
+      const n = typeof v === "number" && Number.isFinite(v) ? v : 0;
+      if (n > score) {
+        score = n;
+        category = cat;
+      }
+    }
+  }
+  return { category, score };
+}
+
+/**
  * Decide o veredito a partir dos `category_scores`.
  * - `sexual` >= SEXUAL_REVIEW_THRESHOLD          -> revisão humana
  * - max(safety) >= SAFETY_REVIEW_THRESHOLD       -> revisão humana

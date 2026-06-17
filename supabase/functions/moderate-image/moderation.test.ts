@@ -9,6 +9,7 @@ import {
   assertEquals,
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import {
+  dominantCategory,
   evaluateImageModeration,
   parseCategoryScores,
   SAFETY_REVIEW_THRESHOLD,
@@ -119,4 +120,20 @@ Deno.test("erro/resposta inválida -> revisão (fail-safe)", () => {
   } as unknown as OpenAIModerationResponse;
   assertEquals(parseCategoryScores(noScores), null);
   assert(evaluateImageModeration(parseCategoryScores(noScores)).needsManualReview);
+});
+
+Deno.test("dominantCategory: retorna a categoria de maior score relevante", () => {
+  assertEquals(dominantCategory({ ...LOW, violence: 0.8 }), {
+    category: "violence",
+    score: 0.8,
+  });
+  assertEquals(dominantCategory({ ...LOW, sexual: 0.93 }), {
+    category: "sexual",
+    score: 0.93,
+  });
+});
+
+Deno.test("dominantCategory: scores nulos/ausentes -> vazio", () => {
+  assertEquals(dominantCategory(null), { category: "", score: 0 });
+  assertEquals(dominantCategory(undefined), { category: "", score: 0 });
 });
