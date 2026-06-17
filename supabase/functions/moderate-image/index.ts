@@ -4,6 +4,7 @@ import { Redis } from "https://esm.sh/@upstash/redis@1.28.0";
 import { Ratelimit } from "https://esm.sh/@upstash/ratelimit@1.0.1";
 import { getCorsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import {
+  dominantCategory,
   evaluateImageModeration,
   parseCategoryScores,
   SAFETY_REVIEW_THRESHOLD,
@@ -113,9 +114,16 @@ serve(async (req) => {
 
     const { imageUrl, imageBase64 } = await req.json();
 
-    if (!imageUrl || typeof imageUrl !== "string") {
-      console.error("[moderate-image] Missing or invalid imageUrl");
-      return json(reviewFallback("URL da imagem não fornecida"), 400);
+    // Aceita base64-only (moderação pré-upload, p/ privacidade) OU imageUrl.
+    const hasValidInlineImage =
+      typeof imageBase64 === "string" &&
+      /^data:image\/(jpeg|jpg|png|webp);base64,/.test(imageBase64) &&
+      imageBase64.length <= MAX_INLINE_IMAGE_CHARS;
+    const hasImageUrl = typeof imageUrl === "string" && imageUrl.length > 0;
+
+    if (!hasValidInlineImage && !hasImageUrl) {
+      console.error("[moderate-image] No image provided (need imageBase64 or imageUrl)");
+      return json(reviewFallback("Imagem não fornecida"), 400);
     }
 
     const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
@@ -124,11 +132,7 @@ serve(async (req) => {
       return json(reviewFallback("Serviço de moderação não configurado."));
     }
 
-    // Escolhe a imagem: data URL reduzida do cliente quando válida, senão a URL pública.
-    const hasValidInlineImage =
-      typeof imageBase64 === "string" &&
-      /^data:image\/(jpeg|jpg|png|webp);base64,/.test(imageBase64) &&
-      imageBase64.length <= MAX_INLINE_IMAGE_CHARS;
+    // Prefere a data URL reduzida do cliente; senão usa a URL pública do Storage.
     const imageInput: string = hasValidInlineImage ? imageBase64 : imageUrl;
 
     console.log(
@@ -209,10 +213,9 @@ serve(async (req) => {
     const categories = data?.results?.[0]?.categories;
     const verdict = evaluateImageModeration(scores, categories);
 
-    const confidenceScore = Object.values(verdict.scores).reduce(
-      (max, v) => Math.max(max, v),
-      0,
-    );
+    // Categoria dominante (maior score) — alimenta a régua do modal no client.
+    const top = dominantCategory(verdict.scores);
+    const confidenceScore = top.score;
 
     // Map de categorias que cruzaram o limiar (informativo; o cliente só usa no
     // ramo de hard-reject, que não acontece aqui pois moderationFlagged=false).
@@ -225,6 +228,7 @@ serve(async (req) => {
     console.log("[moderate-image] Result:", {
       needsManualReview: verdict.needsManualReview,
       confidenceScore,
+      category: top.category,
       scores: verdict.scores,
     });
 
@@ -237,6 +241,8 @@ serve(async (req) => {
         moderationReason: verdict.reason,
         reason: verdict.reason,
         confidenceScore,
+        categoryScores: verdict.scores,
+        category: top.category,
       }
       : {
         imageApproved: true,
@@ -244,6 +250,8 @@ serve(async (req) => {
         moderationCategories,
         needsManualReview: false,
         confidenceScore,
+        categoryScores: verdict.scores,
+        category: top.category,
       };
 
     return json(result);

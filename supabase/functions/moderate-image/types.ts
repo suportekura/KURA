@@ -59,4 +59,10 @@ export interface ModerationResult {
   moderationReason?: string;
   reason?: string;
   error?: string;
+  // Aditivos para o modal de revisão no client (régua de 2 níveis). Presentes
+  // apenas no caminho de flag de conteúdo; ausentes no fail-safe de erro.
+  /** Scores por categoria de imagem (ex.: { sexual: 0.93, violence: 0.01, ... }). */
+  categoryScores?: Record<string, number>;
+  /** Categoria dominante (maior score relevante) — para a mensagem do modal. */
+  category?: string;
 }

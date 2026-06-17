@@ -216,7 +216,7 @@ export function useSellerProducts(
       .from('products')
       .select(SELLER_PRODUCT_COLUMNS)
       .eq('seller_id', sellerId)
-      .in('status', statusKey.split(','))
+      .in('status', statusKey.split(',') as Array<'draft' | 'active' | 'sold' | 'reserved' | 'inactive' | 'pending_review'>)
       .order('created_at', { ascending: false });
 
     if (filters?.search) {
