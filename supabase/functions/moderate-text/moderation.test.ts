@@ -115,7 +115,24 @@ Deno.test("erro/resposta inválida -> revisão (fail-safe)", () => {
   assertEquals(parseCategoryScoresAt({ results: [] }, 0), null);
 
   // scores nulos no título -> evaluateField cai em review -> verdict review.
-  const v = combineTextVerdict(evaluateField(null), null);
+  const titleDecision = evaluateField(null);
+  assertEquals(titleDecision.unavailable, true);
+  const v = combineTextVerdict(titleDecision, null);
   assertEquals(v.moderationFlagged, false);
   assert(v.needsManualReview);
+  // Motivo deve ser específico (falha técnica), não "conteúdo sensível".
+  assert(v.reason?.includes("não foi possível avaliar"));
+  assert(!v.reason?.includes("conteúdo sensível"));
+});
+
+Deno.test("descrição ausente nos results (bug do input) -> motivo técnico", () => {
+  // Reproduz o cenário corrigido: results só tem o título (índice 0); a
+  // descrição (índice 1) não existe -> parse null -> motivo técnico, não conteúdo.
+  const resp = mockResponse(LOW); // só 1 result
+  const title = evaluateField(parseCategoryScoresAt(resp, 0)); // ok
+  const description = evaluateField(parseCategoryScoresAt(resp, 1)); // null -> unavailable
+  const v = combineTextVerdict(title, description);
+  assert(v.needsManualReview);
+  assertEquals(v.flaggedField, undefined);
+  assert(v.reason?.includes("Descrição: não foi possível avaliar"));
 });

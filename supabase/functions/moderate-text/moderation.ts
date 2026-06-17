@@ -60,6 +60,8 @@ export interface FieldDecision {
   category?: string;
   /** Maior score relevante encontrado no campo. */
   score: number;
+  /** true quando os scores não puderam ser lidos (falha técnica, não conteúdo). */
+  unavailable?: boolean;
 }
 
 /**
@@ -104,7 +106,7 @@ export function evaluateField(
   scores: Record<string, number> | null | undefined,
 ): FieldDecision {
   if (!scores || typeof scores !== "object") {
-    return { level: "review", score: 0 };
+    return { level: "review", score: 0, unavailable: true };
   }
 
   const severe = topCategory(scores, SEVERE_CATEGORIES);
@@ -129,6 +131,10 @@ function fieldReason(
   field: "title" | "description",
   decision: FieldDecision,
 ): string {
+  // Falha técnica (scores ausentes) — não confundir com conteúdo sensível.
+  if (decision.unavailable) {
+    return `${FIELD_LABEL[field]}: não foi possível avaliar automaticamente (resposta incompleta do serviço de moderação).`;
+  }
   const cat = decision.category ? ` (${decision.category}, ${pct(decision.score)})` : "";
   return `${FIELD_LABEL[field]}: possível conteúdo sensível${cat}.`;
 }
