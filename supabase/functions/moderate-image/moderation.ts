@@ -1,5 +1,7 @@
 // Lógica pura de decisão da moderação de imagem (sem I/O).
-// Decide pelos `category_scores` da OpenAI — nunca pelo booleano `flagged`.
+// Decide pelos `category_scores` E pelas flags por categoria (`categories`) que
+// a OpenAI devolve — a flag por categoria é calibrada por eles e pega nudez que
+// fica abaixo do nosso limiar de score. Não usamos o agregado `flagged` solto.
 //
 // A função só APROVA ou ENVIA PARA REVISÃO HUMANA. Nunca reprova/inativa
 // sozinha: a fila humana (pending_review) é o backstop. Isso é proposital —
@@ -13,8 +15,8 @@ import type {
 } from "./types.ts";
 
 // ── Limiares de decisão (ajuste aqui sem mexer na lógica) ──────────────────
-export const SEXUAL_REVIEW_THRESHOLD = 0.30; // conservador de propósito (ver nota CSAM)
-export const SAFETY_REVIEW_THRESHOLD = 0.70; // violence, violence/graphic, self-harm*
+export const SEXUAL_REVIEW_THRESHOLD = 0.20; // baixo: nudez pontua moderado em `sexual` (CSAM via fila humana)
+export const SAFETY_REVIEW_THRESHOLD = 0.50; // violence, violence/graphic, self-harm*
 
 // `sexual` tem limiar próprio (mais baixo); as demais compartilham SAFETY.
 export const SEXUAL_CATEGORY: ImageSafetyCategory = "sexual";
@@ -58,6 +60,7 @@ function pct(score: number): string {
  */
 export function evaluateImageModeration(
   scores: Record<string, number> | null | undefined,
+  categories?: Record<string, boolean> | null,
 ): ImageModerationVerdict {
   if (!scores || typeof scores !== "object") {
     return {
@@ -76,6 +79,22 @@ export function evaluateImageModeration(
   // Subconjunto relevante (só categorias de imagem) para log/debug.
   const relevantScores: Record<string, number> = {};
   for (const cat of IMAGE_CATEGORIES) relevantScores[cat] = getScore(cat);
+
+  // (1) Honra a decisão calibrada da OpenAI: se ELA marcou qualquer categoria
+  // de imagem como `true` (ex.: nudez explícita), vai para revisão mesmo que o
+  // nosso score fique abaixo do limiar — pega a nudez que escapava.
+  if (categories) {
+    for (const cat of IMAGE_CATEGORIES) {
+      if (categories[cat] === true) {
+        return {
+          needsManualReview: true,
+          reason:
+            `Conteúdo sinalizado pela OpenAI (${cat}). Revisão manual necessária.`,
+          scores: relevantScores,
+        };
+      }
+    }
+  }
 
   const sexualScore = getScore(SEXUAL_CATEGORY);
   if (sexualScore >= SEXUAL_REVIEW_THRESHOLD) {
