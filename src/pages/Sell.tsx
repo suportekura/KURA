@@ -39,6 +39,12 @@ import { useGeolocation } from '@/hooks/useGeolocation';
 import { useToast } from '@/hooks/use-toast';
 import { useBoostCredits, type BoostType } from '@/hooks/useBoostCredits';
 import { supabase } from '@/integrations/supabase/client';
+import { ImageModerationModal } from '@/components/products/ImageModerationModal';
+
+// Régua de 2 níveis do modal de revisão (calibrável). Nota: roupa de banho,
+// lingerie e moda praia pontuam `sexual` MODERADO — por isso o bloqueio só
+// dispara em altíssima confiança. Ajustar aqui se necessário.
+const SEXUAL_BLOCK_THRESHOLD = 0.90;
 
 interface ImageUpload {
   id: string;
@@ -61,6 +67,9 @@ interface ModerationResult {
   moderationReason?: string;
   reason?: string;
   error?: string;
+  // Presentes só no caminho de flag de conteúdo (ausentes no fail-safe de erro).
+  categoryScores?: Record<string, number>;
+  category?: string;
 }
 
 // Helper function to get user-friendly error message based on moderation category
@@ -272,6 +281,15 @@ export default function Sell() {
   const [selectedBoost, setSelectedBoost] = useState<BoostType | null>(null);
   const { credits: boostCredits, totalCredits, refetch: refetchBoostCredits } = useBoostCredits();
 
+  // Modal de revisão de imagem (decisão consciente antes da revisão silenciosa).
+  const [reviewModal, setReviewModal] = useState<{
+    open: boolean;
+    mode: 'block' | 'confirm';
+    category?: string;
+  }>({ open: false, mode: 'confirm' });
+  // Contexto guardado para o "Enviar mesmo assim" concluir o submit (upload + insert).
+  const pendingSubmitRef = useRef<{ forceReview: boolean; reasons: string[] } | null>(null);
+
   const boostOptions: Array<{ type: BoostType; label: string; icon: typeof Clock }> = [
     { type: '24h', label: '24 horas', icon: Clock },
     { type: '3d', label: '3 dias', icon: Flame },
@@ -467,8 +485,8 @@ export default function Sell() {
     }
   };
 
-  // Moderate image using Google AI
-  const moderateImage = async (imageUrl: string, imageBase64?: string | null): Promise<ModerationResult> => {
+  // Modera a imagem via OpenAI. Aceita base64-only (moderação pré-upload) ou URL.
+  const moderateImage = async (imageUrl: string | null, imageBase64?: string | null): Promise<ModerationResult> => {
     // Erros de infra (rede, 5xx, rate limit) não são um veredito sobre o conteúdo:
     // o anúncio vai para revisão manual em vez de ser bloqueado como "não aprovado"
     const infraErrorResult: ModerationResult = {
@@ -481,7 +499,7 @@ export default function Sell() {
 
     try {
       const { data, error } = await supabase.functions.invoke('moderate-image', {
-        body: { imageUrl, imageBase64: imageBase64 ?? undefined },
+        body: { imageUrl: imageUrl ?? undefined, imageBase64: imageBase64 ?? undefined },
       });
 
       if (error) {
@@ -554,6 +572,146 @@ export default function Sell() {
     });
   };
 
+  // Conclui a publicação: faz o UPLOAD (agora, após a decisão de moderação) e
+  // grava o produto. Chamado pelo caminho "aprovado" e pelo "Enviar mesmo assim".
+  const finishSubmit = async ({ forceReview, reasons }: { forceReview: boolean; reasons: string[] }) => {
+    if (!user) return;
+    setSubmitting(true);
+    try {
+      // Upload das imagens (preservando a ordem). Só agora a foto vai ao Storage.
+      const uploadResults = await Promise.all(
+        images.map(async (img) => {
+          if (img.url) return { url: img.url };
+          if (!img.file) return null;
+          setImages((prev) => prev.map((i) => (i.id === img.id ? { ...i, uploading: true } : i)));
+          try {
+            const url = await uploadImage(img);
+            if (!url) return null;
+            setImages((prev) =>
+              prev.map((i) => (i.id === img.id ? { ...i, uploading: false, uploaded: true, url } : i)),
+            );
+            return { url };
+          } catch (err) {
+            setImages((prev) =>
+              prev.map((i) => (i.id === img.id ? { ...i, uploading: false, error: 'Erro no upload' } : i)),
+            );
+            throw err;
+          }
+        }),
+      );
+
+      const uploadedUrls = uploadResults
+        .filter((r): r is { url: string } => !!r)
+        .map((r) => r.url);
+
+      if (uploadedUrls.length === 0) {
+        throw new Error('Nenhuma imagem foi carregada com sucesso');
+      }
+
+      type ProductCategory = 'camiseta' | 'calca' | 'vestido' | 'jaqueta' | 'saia' | 'shorts' | 'blazer' | 'casaco' | 'acessorios' | 'calcados' | 'outros';
+      type ProductCondition = 'novo' | 'usado';
+
+      const productData: Record<string, unknown> = {
+        title: formData.title.trim(),
+        description: formData.description.trim() || 'Sem descrição',
+        price: parseFloat(formData.price),
+        original_price: formData.originalPrice ? parseFloat(formData.originalPrice) : null,
+        size: formData.size || 'Único',
+        brand: formData.brand.trim() || 'Sem marca',
+        category: formData.category as ProductCategory,
+        condition: formData.condition as ProductCondition,
+        images: uploadedUrls,
+        status: forceReview ? 'pending_review' : 'active',
+        moderation_status: forceReview ? 'pending' : 'approved',
+        moderated_at: new Date().toISOString(),
+        review_notes: null,
+        reviewed_by: null,
+        moderation_reason: reasons.length > 0 ? reasons.join(' | ') : null,
+      };
+
+      if (formData.gender) {
+        productData.gender = formData.gender;
+      }
+
+      if (isEditMode) {
+        const { error: updateError } = await supabase
+          .from('products')
+          .update(productData)
+          .eq('id', editProductId)
+          .eq('seller_id', user.id);
+        if (updateError) {
+          console.error('[Sell] Update error:', updateError);
+          throw new Error('Erro ao atualizar produto');
+        }
+        toast(
+          forceReview
+            ? { title: 'Anúncio enviado para revisão', description: 'Seu anúncio será revisado pela nossa equipe antes de ser publicado.' }
+            : { title: 'Anúncio atualizado! ✓', description: 'As alterações foram salvas.' },
+        );
+      } else {
+        const insertData = {
+          ...productData,
+          seller_id: user.id,
+          seller_latitude: location?.latitude,
+          seller_longitude: location?.longitude,
+          seller_city: location?.city,
+          seller_state: location?.state,
+        };
+        const { data: createdProduct, error: insertError } = await supabase
+          .from('products')
+          .insert(insertData as any)
+          .select('id')
+          .single();
+        if (insertError) {
+          console.error('[Sell] Insert error:', insertError);
+          throw new Error('Erro ao publicar produto');
+        }
+
+        // Impulso só em status 'active' — anúncio em revisão preserva o crédito.
+        let boostApplied = false;
+        if (selectedBoost && createdProduct?.id && !forceReview) {
+          const { data: boostData, error: boostError } = await supabase.rpc('activate_product_boost', {
+            p_product_id: createdProduct.id,
+            p_boost_type: selectedBoost,
+          });
+          const boostResult = boostData as unknown as { success: boolean; error?: string } | null;
+          if (boostError || !boostResult?.success) {
+            console.error('[Sell] Boost activation error:', boostError || boostResult?.error);
+            toast({ title: 'Anúncio publicado, mas o impulso não foi aplicado', description: 'Seu crédito não foi debitado. Você pode impulsionar em Meus Anúncios.' });
+          } else {
+            boostApplied = true;
+            refetchBoostCredits();
+          }
+        }
+
+        if (forceReview) {
+          toast({
+            title: 'Anúncio enviado para revisão 🔍',
+            description: selectedBoost
+              ? 'Seu anúncio será revisado pela nossa equipe. O impulso não foi debitado — aplique em Meus Anúncios após a aprovação.'
+              : 'Seu anúncio será revisado pela nossa equipe e ficará disponível em breve.',
+          });
+        } else if (boostApplied) {
+          toast({ title: 'Produto publicado e impulsionado! 🚀', description: 'Seu anúncio já está disponível no topo dos resultados.' });
+        } else {
+          toast({ title: 'Produto publicado! 🎉', description: 'Seu anúncio já está disponível.' });
+        }
+      }
+
+      clearDraft();
+      navigate(isEditMode ? '/my-listings' : '/');
+    } catch (err) {
+      console.error('[Sell] Finish submit error:', err);
+      toast({
+        title: isEditMode ? 'Erro ao atualizar' : 'Erro ao publicar',
+        description: err instanceof Error ? err.message : 'Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!user) {
       toast({
@@ -586,55 +744,9 @@ export default function Sell() {
     setModerating(true);
 
     try {
-      // Step 1: Upload new images in parallel, preserving the display order
-      const uploadResults = await Promise.all(
-        images.map(async (img) => {
-          if (img.url) {
-            // Already uploaded image (edit mode / draft) — moderate only if not previously moderated
-            return { url: img.url, file: img.file ?? null, needsModeration: !img.moderated };
-          }
-          if (!img.file) return null;
-
-          setImages((prev) =>
-            prev.map((i) => (i.id === img.id ? { ...i, uploading: true } : i))
-          );
-
-          try {
-            const url = await uploadImage(img);
-            if (!url) return null;
-            setImages((prev) =>
-              prev.map((i) =>
-                i.id === img.id ? { ...i, uploading: false, uploaded: true, url } : i
-              )
-            );
-            return { url, file: img.file, needsModeration: true };
-          } catch (err) {
-            setImages((prev) =>
-              prev.map((i) =>
-                i.id === img.id
-                  ? { ...i, uploading: false, error: 'Erro no upload' }
-                  : i
-              )
-            );
-            throw err;
-          }
-        })
-      );
-
-      const uploaded = uploadResults.filter(
-        (r): r is { url: string; file: File | null; needsModeration: boolean } => !!r
-      );
-      const uploadedUrls = uploaded.map((r) => r.url);
-      const imagesToModerate = uploaded.filter((r) => r.needsModeration);
-
-      if (uploadedUrls.length === 0) {
-        throw new Error('Nenhuma imagem foi carregada com sucesso');
-      }
-
-      // Step 2: Moderate all images and the text in parallel (each with its own timeout)
-      let needsManualReview = false;
-      const moderationReasons: string[] = [];
-
+      // Modera ANTES de subir ao Storage (privacidade): usa a versão reduzida
+      // (data URL) que já geramos no client. A foto só vai ao Storage depois da
+      // decisão — foto trocada nunca é persistida.
       const imageTimeoutFallback: ModerationResult = {
         imageApproved: false,
         moderationFlagged: false,
@@ -651,231 +763,110 @@ export default function Sell() {
         needsManualReview: false,
       };
 
-      console.log('[Sell] Moderating', imagesToModerate.length, 'images + text in parallel...');
+      console.log('[Sell] Moderating images (pre-upload) + text in parallel...');
 
       const [imageModerations, textModerationResult] = await Promise.all([
         Promise.all(
-          imagesToModerate.map(async ({ url, file }) => {
-            // Versão reduzida vai no body; sem ela a function baixa a original pela URL
-            const downscaled = file ? await prepareImageForModeration(file) : null;
-            const result = await withModerationTimeout(moderateImage(url, downscaled), imageTimeoutFallback);
-            return { url, result };
-          })
+          images.map(async (img) => {
+            // Imagens já no Storage e já moderadas (edição) não re-moderam.
+            if (img.url && img.moderated) {
+              return {
+                img,
+                result: {
+                  imageApproved: true,
+                  moderationFlagged: false,
+                  moderationCategories: {},
+                  needsManualReview: false,
+                } as ModerationResult,
+              };
+            }
+            // Novas: gera o base64 reduzido e modera SEM subir. Edição não-moderada: via URL.
+            const downscaled = img.file ? await prepareImageForModeration(img.file) : null;
+            const result = await withModerationTimeout(
+              moderateImage(img.url ?? null, downscaled),
+              imageTimeoutFallback,
+            );
+            return { img, result };
+          }),
         ),
         withModerationTimeout(
           moderateText(formData.title.trim(), formData.description.trim()),
-          textTimeoutFallback
+          textTimeoutFallback,
         ),
       ]);
 
-      // Hard rejection: mark every flagged image and abort with the first reason
-      const flaggedImages = imageModerations.filter(({ result }) => result.moderationFlagged);
-      if (flaggedImages.length > 0) {
-        setModerating(false);
-        setSubmitting(false);
+      setModerating(false);
 
-        const firstResult = flaggedImages[0].result;
-        const errorMessage = getModerationErrorMessage(
-          firstResult.moderationCategories,
-          firstResult.reason
-        );
-
-        toast({
-          title: errorMessage.title,
-          description: errorMessage.description,
-          variant: 'destructive',
-        });
-
-        const getShortError = (categories: Record<string, boolean>) =>
-          categories.screenshot ? 'Screenshot'
-            : categories.heavily_edited ? 'Muito editada'
-            : categories.not_product ? 'Não é produto'
-            : categories.low_quality ? 'Baixa qualidade'
-            : 'Não permitido';
-
-        setImages((prev) =>
-          prev.map((i) => {
-            const flaggedEntry = i.url ? flaggedImages.find(({ url }) => url === i.url) : undefined;
-            if (!flaggedEntry) return i;
-            return {
-              ...i,
-              moderated: true,
-              moderationPassed: false,
-              error: getShortError(flaggedEntry.result.moderationCategories),
-            };
-          })
-        );
-
-        return;
-      }
-
-      // Aggregate manual review flags and mark images as approved
-      for (const { url, result } of imageModerations) {
-        if (result.needsManualReview) {
-          needsManualReview = true;
-          if (result.moderationReason) moderationReasons.push(result.moderationReason);
-          console.log('[Sell] Image needs manual review due to low confidence:', result.confidenceScore);
-        }
-        setImages((prev) =>
-          prev.map((i) =>
-            i.url === url ? { ...i, moderated: true, moderationPassed: true } : i
-          )
-        );
-      }
-
-      // Text moderation: hard rejection
+      // Texto reprovado (hard-reject) — aborta antes de qualquer upload.
       if (textModerationResult.moderationFlagged) {
-        setModerating(false);
         setSubmitting(false);
-
         const fieldMessage = textModerationResult.flaggedField === 'title'
           ? 'O título do anúncio'
           : textModerationResult.flaggedField === 'description'
             ? 'A descrição do anúncio'
             : 'O título ou descrição do anúncio';
-
         toast({
           title: 'Texto não aprovado',
           description: `${fieldMessage} não atende às nossas diretrizes de conteúdo. Por favor, revise e tente novamente.`,
           variant: 'destructive',
         });
-
         return;
       }
 
-      // Check for low confidence on text
+      // Destaca a imagem sinalizada para a pessoa trocar.
+      const flagImage = (id: string) =>
+        setImages((prev) =>
+          prev.map((i) =>
+            i.id === id ? { ...i, moderated: true, moderationPassed: false, error: 'Revise esta foto' } : i,
+          ),
+        );
+
+      // Régua de decisão da imagem.
+      // TODO: hash-matching (ex. PhotoDNA) neste ponto se o volume justificar —
+      // conteúdo claramente explícito não deve ser persistido nem encaminhado.
+      const blockEntry = imageModerations.find(
+        ({ result }) =>
+          result.needsManualReview && (result.categoryScores?.sexual ?? 0) >= SEXUAL_BLOCK_THRESHOLD,
+      );
+      if (blockEntry) {
+        // Sexual de altíssima confiança: NÃO sobe ao Storage, NÃO vai a revisão. Só trocar.
+        flagImage(blockEntry.img.id);
+        setSubmitting(false);
+        setReviewModal({ open: true, mode: 'block', category: blockEntry.result.category });
+        return;
+      }
+
+      // Agrega motivos / decide se vai para revisão.
+      const reasons: string[] = [];
+      let forceReview = false;
+      for (const { result } of imageModerations) {
+        if (result.needsManualReview) {
+          forceReview = true;
+          if (result.moderationReason) reasons.push(result.moderationReason);
+        }
+      }
       if (textModerationResult.needsManualReview) {
-        needsManualReview = true;
-        if (textModerationResult.moderationReason) moderationReasons.push(textModerationResult.moderationReason);
-        console.log('[Sell] Text needs manual review due to low confidence:', textModerationResult.confidenceScore);
+        forceReview = true;
+        if (textModerationResult.moderationReason) reasons.push(textModerationResult.moderationReason);
       }
 
-      console.log('[Sell] Moderation complete, needsManualReview:', needsManualReview);
-      setModerating(false);
-
-      // Step 3: Save product to database
-      type ProductCategory = 'camiseta' | 'calca' | 'vestido' | 'jaqueta' | 'saia' | 'shorts' | 'blazer' | 'casaco' | 'acessorios' | 'calcados' | 'outros';
-      type ProductCondition = 'novo' | 'usado';
-
-      // Determine the product status based on moderation results
-      const productStatus = needsManualReview ? 'pending_review' : 'active';
-
-      const productData: Record<string, unknown> = {
-        title: formData.title.trim(),
-        description: formData.description.trim() || 'Sem descrição',
-        price: parseFloat(formData.price),
-        original_price: formData.originalPrice ? parseFloat(formData.originalPrice) : null,
-        size: formData.size || 'Único',
-        brand: formData.brand.trim() || 'Sem marca',
-        category: formData.category as ProductCategory,
-        condition: formData.condition as ProductCondition,
-        images: uploadedUrls,
-        status: productStatus,
-        moderation_status: needsManualReview ? 'pending' : 'approved',
-        moderated_at: new Date().toISOString(),
-        // Clear rejection notes when resubmitting
-        review_notes: null,
-        reviewed_by: null,
-        moderation_reason: moderationReasons.length > 0 ? moderationReasons.join(' | ') : null,
-      };
-
-      // Add gender field if it exists in DB (migration may not be applied yet)
-      if (formData.gender) {
-        productData.gender = formData.gender;
+      // Flag de CONTEÚDO na imagem (tem categoryScores) — distinta do fail-safe de
+      // erro (que não traz categoryScores e segue silencioso para revisão).
+      const contentReviewEntry = imageModerations.find(
+        ({ result }) => result.needsManualReview && !!result.categoryScores,
+      );
+      if (contentReviewEntry) {
+        // Decisão consciente: trocar a foto OU enviar mesmo assim (-> revisão humana).
+        flagImage(contentReviewEntry.img.id);
+        pendingSubmitRef.current = { forceReview: true, reasons };
+        setSubmitting(false);
+        setReviewModal({ open: true, mode: 'confirm', category: contentReviewEntry.result.category });
+        return;
       }
 
-      if (isEditMode) {
-        // Update existing product
-        const { error: updateError } = await supabase
-          .from('products')
-          .update(productData)
-          .eq('id', editProductId)
-          .eq('seller_id', user.id);
-
-        if (updateError) {
-          console.error('[Sell] Update error:', updateError);
-          throw new Error('Erro ao atualizar produto');
-        }
-
-        if (needsManualReview) {
-          toast({
-            title: 'Anúncio enviado para revisão',
-            description: 'Seu anúncio será revisado pela nossa equipe antes de ser publicado.',
-          });
-        } else {
-          toast({
-            title: 'Anúncio atualizado! ✓',
-            description: 'As alterações foram salvas.',
-          });
-        }
-      } else {
-        // Create new product
-        const insertData = {
-          ...productData,
-          seller_id: user.id,
-          seller_latitude: location?.latitude,
-          seller_longitude: location?.longitude,
-          seller_city: location?.city,
-          seller_state: location?.state,
-        };
-
-        const { data: createdProduct, error: insertError } = await supabase
-          .from('products')
-          .insert(insertData as any)
-          .select('id')
-          .single();
-
-        if (insertError) {
-          console.error('[Sell] Insert error:', insertError);
-          throw new Error('Erro ao publicar produto');
-        }
-
-        // Apply boost from balance, if selected. The RPC debits the credit and
-        // creates the boost in a single transaction (no debit without boost).
-        // It requires status = 'active', so listings sent to manual review keep the credit.
-        let boostApplied = false;
-        if (selectedBoost && createdProduct?.id && !needsManualReview) {
-          const { data: boostData, error: boostError } = await supabase.rpc('activate_product_boost', {
-            p_product_id: createdProduct.id,
-            p_boost_type: selectedBoost,
-          });
-
-          const boostResult = boostData as unknown as { success: boolean; error?: string } | null;
-          if (boostError || !boostResult?.success) {
-            console.error('[Sell] Boost activation error:', boostError || boostResult?.error);
-            toast({
-              title: 'Anúncio publicado, mas o impulso não foi aplicado',
-              description: 'Seu crédito não foi debitado. Você pode impulsionar em Meus Anúncios.',
-            });
-          } else {
-            boostApplied = true;
-            refetchBoostCredits();
-          }
-        }
-
-        if (needsManualReview) {
-          toast({
-            title: 'Anúncio enviado para revisão 🔍',
-            description: selectedBoost
-              ? 'Seu anúncio será revisado pela nossa equipe. O impulso não foi debitado — aplique em Meus Anúncios após a aprovação.'
-              : 'Seu anúncio será revisado pela nossa equipe e ficará disponível em breve.',
-          });
-        } else if (boostApplied) {
-          toast({
-            title: 'Produto publicado e impulsionado! 🚀',
-            description: 'Seu anúncio já está disponível no topo dos resultados.',
-          });
-        } else {
-          toast({
-            title: 'Produto publicado! 🎉',
-            description: 'Seu anúncio já está disponível.',
-          });
-        }
-      }
-
-      // Clear draft and navigate back
-      clearDraft();
-      navigate(isEditMode ? '/my-listings' : '/');
+      // Sem flag de conteúdo (aprovado, revisão por erro/timeout, ou texto em
+      // revisão): segue. Erro de moderação NÃO bloqueia — vai p/ revisão silenciosa.
+      await finishSubmit({ forceReview, reasons });
     } catch (err) {
       console.error('[Sell] Submit error:', err);
       toast({
@@ -1368,6 +1359,24 @@ export default function Sell() {
           </Button>
         </div>
       </div>
+
+      <ImageModerationModal
+        open={reviewModal.open}
+        mode={reviewModal.mode}
+        category={reviewModal.category}
+        onOpenChange={(o) => setReviewModal((m) => ({ ...m, open: o }))}
+        onReplace={() => {
+          // Não envia: a foto sinalizada já está destacada para a pessoa trocar.
+          pendingSubmitRef.current = null;
+          setReviewModal((m) => ({ ...m, open: false }));
+        }}
+        onSendAnyway={async () => {
+          const ctx = pendingSubmitRef.current;
+          pendingSubmitRef.current = null;
+          setReviewModal((m) => ({ ...m, open: false }));
+          if (ctx) await finishSubmit(ctx);
+        }}
+      />
     </AppLayout>
   );
 }
