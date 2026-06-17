@@ -203,9 +203,11 @@ serve(async (req) => {
       );
     }
 
-    // Decisão pelos category_scores (parse defensivo: formato inesperado -> revisão).
+    // Decisão pelos category_scores + flags por categoria da OpenAI
+    // (parse defensivo: formato inesperado -> revisão).
     const scores = parseCategoryScores(data);
-    const verdict = evaluateImageModeration(scores);
+    const categories = data?.results?.[0]?.categories;
+    const verdict = evaluateImageModeration(scores, categories);
 
     const confidenceScore = Object.values(verdict.scores).reduce(
       (max, v) => Math.max(max, v),

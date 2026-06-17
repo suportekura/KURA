@@ -86,9 +86,22 @@ Deno.test("self-harm/intent no limiar de safety -> revisão", () => {
 
 Deno.test("safety logo abaixo do limiar -> aprova", () => {
   const verdict = evaluateImageModeration(
-    parseCategoryScores(mockResponse({ ...LOW, violence: 0.69 })),
+    parseCategoryScores(mockResponse({ ...LOW, violence: 0.49 })),
   );
   assertEquals(verdict.needsManualReview, false);
+});
+
+Deno.test("OpenAI marca categoria de imagem (categories) -> revisão mesmo com score baixo", () => {
+  // Caso da nudez que escapava: score abaixo do limiar, mas a OpenAI marca
+  // categories.sexual = true -> honramos a flag dela e vai para revisão.
+  const resp = mockResponse(LOW);
+  resp.results![0].categories = { sexual: true };
+  const verdict = evaluateImageModeration(
+    parseCategoryScores(resp),
+    resp.results![0].categories,
+  );
+  assert(verdict.needsManualReview);
+  assert(verdict.reason?.toLowerCase().includes("sexual"));
 });
 
 Deno.test("erro/resposta inválida -> revisão (fail-safe)", () => {
