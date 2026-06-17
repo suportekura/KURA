@@ -125,9 +125,13 @@ serve(async (req) => {
       return json(reviewFallback("Serviço de moderação não configurado."));
     }
 
-    // input array: results[0]=título, results[1]=descrição (quando houver).
-    const input: { type: "text"; text: string }[] = [{ type: "text", text: title }];
-    if (hasDescription) input.push({ type: "text", text: descriptionText });
+    // input como array de STRINGS: a OpenAI devolve um `result` por string
+    // (results[0]=título, results[1]=descrição). ATENÇÃO: um array de objetos
+    // content-part (`{type:"text",...}`) seria tratado como UM input multimodal
+    // combinado, retornando só results[0] — o que mandava todo anúncio com
+    // descrição para revisão (results[1] = undefined -> fail-safe).
+    const input: string[] = [title];
+    if (hasDescription) input.push(descriptionText);
 
     // Chamada à OpenAI Moderation API com retry/backoff (429/5xx) + AbortController.
     let response: Response | null = null;
