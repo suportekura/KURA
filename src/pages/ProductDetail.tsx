@@ -133,9 +133,22 @@ export default function ProductDetail() {
     });
   };
 
+  // Quando o usuário chega direto pelo link de compartilhamento, não há
+  // histórico de navegação dentro do app (window.history.state.idx === 0),
+  // então navigate(-1) o deixaria preso ou fora do app. Nesse caso, manda
+  // para a home; caso contrário, volta normalmente para a página anterior.
+  const handleBack = () => {
+    const hasAppHistory = (window.history.state?.idx ?? 0) > 0;
+    if (hasAppHistory) {
+      navigate(-1);
+    } else {
+      navigate('/');
+    }
+  };
+
   const handleShare = async () => {
     if (!product) return;
-    
+
     const shareData = {
       title: product.title,
       text: `Confira ${product.title} por R$ ${product.price} na Kura!`,
@@ -245,7 +258,7 @@ export default function ProductDetail() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => navigate(-1)}
+                onClick={handleBack}
                 className="w-10 h-10 rounded-full bg-background/80 backdrop-blur-sm"
               >
                 <ArrowLeft className="w-5 h-5" />
