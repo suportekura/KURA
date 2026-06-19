@@ -105,6 +105,19 @@ export default function SellerProfile() {
     });
   }, [sellerId, isOwnProfile]);
 
+  // Quando o usuário chega direto pelo link de compartilhamento, não há
+  // histórico de navegação dentro do app (window.history.state.idx === 0),
+  // então navigate(-1) o deixaria preso ou fora do app. Nesse caso, manda
+  // para a home; caso contrário, volta normalmente para a página anterior.
+  const handleBack = () => {
+    const hasAppHistory = (window.history.state?.idx ?? 0) > 0;
+    if (hasAppHistory) {
+      navigate(-1);
+    } else {
+      navigate('/');
+    }
+  };
+
   const handleShare = async () => {
     const shareData = {
       title: `${profile?.display_name || 'Vendedor'} na Kura`,
@@ -203,7 +216,7 @@ export default function SellerProfile() {
         <Button
           variant="ghost"
           size="icon"
-          onClick={() => navigate(-1)}
+          onClick={handleBack}
           className="absolute top-3 left-3 bg-background/80 backdrop-blur-sm hover:bg-background"
         >
           <ArrowLeft className="h-5 w-5" />
